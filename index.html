@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5A1A22">
+<title>Bestattungshaus Kallwaß – Beratung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Nunito+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bordeaux:#5A1A22;
+  --bordeaux-light:#722F37;
+  --bordeaux-dark:#3E0F15;
+  --gold:#C5A55A;
+  --gold-light:#D4BA7A;
+  --gold-dark:#A8893E;
+  --cream:#FAF7F2;
+  --warm-white:#FEFCF9;
+  --warm-gray:#E8E2DA;
+  --text-dark:#2A1A1D;
+  --text-muted:#6B5A5E;
+  --text-light:#9A8A8E;
+  --shadow-sm:0 1px 3px rgba(90,26,34,0.08);
+  --shadow-md:0 4px 16px rgba(90,26,34,0.1);
+  --shadow-lg:0 8px 32px rgba(90,26,34,0.14);
+  --shadow-xl:0 16px 48px rgba(90,26,34,0.18);
+  --radius:12px;
+  --radius-lg:20px;
+  --transition:0.3s cubic-bezier(0.4,0,0.2,1);
+  --font-display:'Cormorant Garamond',Georgia,serif;
+  --font-body:'Nunito Sans',system-ui,sans-serif;
+}
+html{font-size:16px;-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  font-family:var(--font-body);
+  background:var(--cream);
+  color:var(--text-dark);
+  line-height:1.6;
+  min-height:100vh;
+  min-height:100dvh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Loading Screen ── */
+#loading-screen{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bordeaux);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.6s ease,visibility 0.6s ease;
+}
+#loading-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+#loading-screen .logo-text{
+  font-family:var(--font-display);font-size:2rem;color:var(--gold);
+  letter-spacing:0.08em;font-weight:300;margin-bottom:1.5rem;
+}
+.loader{width:40px;height:40px;border:2px solid rgba(197,165,90,0.2);
+  border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Header ── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(90,26,34,0.97);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(197,165,90,0.2);
+}
+.header-inner{
+  max-width:1200px;margin:0 auto;
+  padding:0.9rem 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.brand{display:flex;align-items:center;gap:0.75rem;text-decoration:none}
+.brand-icon{
+  width:38px;height:38px;
+  border:1.5px solid var(--gold);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-family:var(--font-display);font-size:1.1rem;font-weight:600;
+}
+.brand-name{
+  font-family:var(--font-display);font-size:1.25rem;font-weight:400;
+  color:var(--cream);letter-spacing:0.06em;
+}
+.brand-name span{color:var(--gold)}
+nav{display:flex;align-items:center;gap:0.25rem}
+nav button{
+  background:none;border:none;cursor:pointer;
+  color:var(--cream);font-family:var(--font-body);font-size:0.82rem;
+  padding:0.5rem 0.9rem;border-radius:8px;
+  transition:var(--transition);font-weight:500;letter-spacing:0.02em;
+  opacity:0.85;
+}
+nav button:hover,nav button.active{opacity:1;background:rgba(197,165,90,0.15)}
+nav button.active{color:var(--gold)}
+.admin-btn{
+  background:rgba(197,165,90,0.12)!important;
+  border:1px solid rgba(197,165,90,0.3)!important;
+  color:var(--gold)!important;opacity:1!important;
+}
+.admin-btn:hover{background:rgba(197,165,90,0.22)!important}
+
+/* ── Mobile Nav ── */
+.mobile-menu-btn{display:none;background:none;border:none;cursor:pointer;padding:0.5rem;color:var(--cream)}
+@media(max-width:768px){
+  .mobile-menu-btn{display:flex;align-items:center}
+  nav{
+    position:fixed;top:0;right:-280px;width:280px;height:100%;
+    background:var(--bordeaux-dark);flex-direction:column;
+    padding:5rem 1.5rem 2rem;gap:0.5rem;align-items:stretch;
+    transition:right 0.35s cubic-bezier(0.4,0,0.2,1);
+    box-shadow:-4px 0 24px rgba(0,0,0,0.3);z-index:200;
+  }
+  nav.open{right:0}
+  nav button{text-align:left;padding:0.8rem 1rem;font-size:0.95rem}
+  .nav-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:199;
+    opacity:0;visibility:hidden;transition:var(--transition);
+  }
+  .nav-overlay.active{opacity:1;visibility:visible}
+  .nav-close{
+    position:absolute;top:1rem;right:1rem;
+    background:none;border:none;color:var(--cream);cursor:pointer;
+    font-size:1.5rem;padding:0.5rem;
+  }
+}
+
+/* ── Main Content ── */
+main{max-width:1200px;margin:0 auto;padding:1.5rem}
+.page{display:none;animation:fadeUp 0.4s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Hero Section ── */
+.hero{
+  text-align:center;padding:3rem 1.5rem 2.5rem;
+  background:linear-gradient(180deg,rgba(90,26,34,0.04) 0%,transparent 100%);
+  border-radius:var(--radius-lg);margin-bottom:2rem;
+}
+.hero h1{
+  font-family:var(--font-display);font-size:clamp(1.8rem,4vw,2.8rem);
+  font-weight:300;color:var(--bordeaux);line-height:1.25;
+  margin-bottom:0.75rem;letter-spacing:0.02em;
+}
+.hero h1 em{font-style:italic;color:var(--gold-dark);font-weight:400}
+.hero p{
+  font-size:clamp(0.9rem,1.5vw,1.05rem);color:var(--text-muted);
+  max-width:520px;margin:0 auto;font-weight:300;line-height:1.7;
+}
+.gold-line{
+  width:48px;height:2px;background:var(--gold);
+  margin:1.25rem auto;border-radius:1px;
+}
+
+/* ── Category Cards ── */
+.categories-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:1.25rem;margin-bottom:2rem;
+}
+.cat-card{
+  background:var(--warm-white);border-radius:var(--radius-lg);
+  overflow:hidden;cursor:pointer;
+  border:1px solid rgba(90,26,34,0.06);
+  transition:var(--transition);position:relative;
+}
+.cat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.cat-card-img{
+  width:100%;height:180px;object-fit:cover;
+  background:linear-gradient(135deg,var(--bordeaux) 0%,var(--bordeaux-light) 100%);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-size:2.5rem;
+}
+.cat-card-img img{width:100%;height:100%;object-fit:cover}
+.cat-card-body{padding:1.25rem}
+.cat-card-body h3{
+  font-family:var(--font-display);font-size:1.3rem;font-weight:500;
+  color:var(--bordeaux);margin-bottom:0.3rem;
+}
+.cat-card-body p{font-size:0.85rem;color:var(--text-muted);font-weight:300}
+.cat-card-count{
+  position:absolute;top:1rem;right:1rem;
+  background:rgba(90,26,34,0.85);color:var(--gold);
+  font-size:0.75rem;padding:0.25rem 0.65rem;border-radius:20px;
+  font-weight:600;backdrop-filter:blur(8px);
+}
+
+/* ── Product Grid ── */
+.products-header{
+  display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;
+  flex-wrap:wrap;
+}
+.back-btn{
+  background:none;border:1px solid var(--warm-gray);
+  color:var(--text-dark);padding:0.5rem 1rem;border-radius:8px;
+  cursor:pointer;font-family:var(--font-body);font-size:0.85rem;
+  transition:var(--transition);display:flex;align-items:center;gap:0.4rem;
+}
+.back-btn:hover{border-color:var(--bordeaux);color:var(--bordeaux)}
+.products-header h2{
+  font-family:var(--font-display);font-size:1.8rem;font-weight:400;
+  color:var(--bordeaux);
+}
+.products-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:1.25rem;
+}
+.product-card{
+  background:var(--warm-white);border-radius:var(--radius);
+  overflow:hidden;border:1px solid rgba(90,26,34,0.06);
+  transition:var(--transition);
+}
+.product-card:hover{box-shadow:var(--shadow-md)}
+.product-card-img{
+  width:100%;height:220px;object-fit:cover;
+  background:linear-gradient(135deg,#e8e2da,#d4cfc7);
+}
+.product-card-img img{width:100%;height:100%;object-fit:cover}
+.product-card-body{padding:1.15rem}
+.product-card-body h4{
+  font-family:var(--font-display);font-size:1.15rem;font-weight:500;
+  color:var(--bordeaux);margin-bottom:0.35rem;
+}
+.product-card-body .price{
+  font-size:1rem;color:var(--gold-dark);font-weight:600;margin-bottom:0.4rem;
+}
+.product-card-body .desc{
+  font-size:0.82rem;color:var(--text-muted);line-height:1.55;font-weight:300;
+}
+
+/* ── Product Detail Modal ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;
+  display:none;align-items:center;justify-content:center;padding:1rem;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.active{display:flex}
+.modal{
+  background:var(--warm-white);border-radius:var(--radius-lg);
+  max-width:600px;width:100%;max-height:90vh;overflow-y:auto;
+  box-shadow:var(--shadow-xl);animation:modalIn 0.3s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+.modal-img{width:100%;height:300px;object-fit:cover;background:var(--warm-gray)}
+.modal-img img{width:100%;height:100%;object-fit:cover}
+.modal-body{padding:1.75rem}
+.modal-body h2{
+  font-family:var(--font-display);font-size:1.6rem;font-weight:500;
+  color:var(--bordeaux);margin-bottom:0.5rem;
+}
+.modal-body .price{font-size:1.2rem;color:var(--gold-dark);font-weight:600;margin-bottom:1rem}
+.modal-body .desc{font-size:0.92rem;color:var(--text-muted);line-height:1.7;font-weight:300}
+.modal-close{
+  position:absolute;top:1rem;right:1rem;
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:rgba(0,0,0,0.5);color:#fff;font-size:1.2rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:var(--transition);
+}
+.modal-close:hover{background:rgba(0,0,0,0.7)}
+
+/* ── Admin Styles ── */
+.login-card{
+  max-width:400px;margin:3rem auto;
+  background:var(--warm-white);padding:2.5rem;
+  border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+  border:1px solid rgba(90,26,34,0.08);
+}
+.login-card h2{
+  font-family:var(--font-display);font-size:1.6rem;font-weight:400;
+  color:var(--bordeaux);text-align:center;margin-bottom:0.5rem;
+}
+.login-card .subtitle{
+  text-align:center;color:var(--text-muted);font-size:0.85rem;
+  margin-bottom:2rem;font-weight:300;
+}
+.form-group{margin-bottom:1.25rem}
+.form-group label{
+  display:block;font-size:0.8rem;font-weight:600;
+  color:var(--text-muted);margin-bottom:0.4rem;
+  text-transform:uppercase;letter-spacing:0.08em;
+}
+.form-group input,.form-group textarea,.form-group select{
+  width:100%;padding:0.75rem 1rem;
+  border:1.5px solid var(--warm-gray);border-radius:10px;
+  font-family:var(--font-body);font-size:0.92rem;
+  background:var(--cream);color:var(--text-dark);
+  transition:var(--transition);
+}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{
+  outline:none;border-color:var(--gold);
+  box-shadow:0 0 0 3px rgba(197,165,90,0.15);
+}
+.form-group textarea{resize:vertical;min-height:80px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;
+  padding:0.75rem 1.5rem;border-radius:10px;border:none;
+  font-family:var(--font-body);font-size:0.9rem;font-weight:600;
+  cursor:pointer;transition:var(--transition);letter-spacing:0.02em;
+}
+.btn-primary{
+  background:var(--bordeaux);color:var(--cream);width:100%;
+}
+.btn-primary:hover{background:var(--bordeaux-light)}
+.btn-gold{
+  background:linear-gradient(135deg,var(--gold),var(--gold-light));
+  color:var(--bordeaux-dark);
+}
+.btn-gold:hover{box-shadow:var(--shadow-md)}
+.btn-outline{
+  background:transparent;border:1.5px solid var(--warm-gray);
+  color:var(--text-dark);
+}
+.btn-outline:hover{border-color:var(--bordeaux);color:var(--bordeaux)}
+.btn-danger{background:#c0392b;color:#fff}
+.btn-danger:hover{background:#a93226}
+.btn-sm{padding:0.5rem 1rem;font-size:0.82rem}
+
+/* ── Admin Dashboard ── */
+.admin-header{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:1rem;margin-bottom:2rem;
+}
+.admin-header h2{
+  font-family:var(--font-display);font-size:1.8rem;font-weight:400;color:var(--bordeaux);
+}
+.admin-stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1rem;margin-bottom:2rem;
+}
+.stat-card{
+  background:var(--warm-white);padding:1.25rem;border-radius:var(--radius);
+  border:1px solid rgba(90,26,34,0.06);text-align:center;
+}
+.stat-card .num{
+  font-family:var(--font-display);font-size:2rem;font-weight:600;color:var(--bordeaux);
+}
+.stat-card .label{font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem;font-weight:500}
+.admin-section{
+  background:var(--warm-white);border-radius:var(--radius-lg);
+  padding:1.5rem;margin-bottom:1.5rem;
+  border:1px solid rgba(90,26,34,0.06);
+}
+.admin-section h3{
+  font-family:var(--font-display);font-size:1.3rem;font-weight:500;
+  color:var(--bordeaux);margin-bottom:1rem;
+  padding-bottom:0.75rem;border-bottom:1px solid var(--warm-gray);
+}
+.admin-list{list-style:none}
+.admin-list li{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0.75rem 0;border-bottom:1px solid rgba(0,0,0,0.04);
+  flex-wrap:wrap;gap:0.5rem;
+}
+.admin-list li:last-child{border-bottom:none}
+.admin-list .item-info{display:flex;align-items:center;gap:0.75rem;flex:1;min-width:0}
+.admin-list .item-thumb{
+  width:48px;height:48px;border-radius:8px;object-fit:cover;
+  background:var(--warm-gray);flex-shrink:0;
+}
+.admin-list .item-name{font-weight:500;font-size:0.92rem;overflow:hidden;text-overflow:ellipsis}
+.admin-list .item-actions{display:flex;gap:0.4rem;flex-shrink:0}
+.admin-list .item-actions button{
+  background:none;border:1px solid var(--warm-gray);
+  width:32px;height:32px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-muted);font-size:0.85rem;transition:var(--transition);
+}
+.admin-list .item-actions button:hover{border-color:var(--bordeaux);color:var(--bordeaux)}
+.admin-list .item-actions button.del:hover{border-color:#c0392b;color:#c0392b}
+
+/* ── File Upload ── */
+.file-upload{
+  border:2px dashed var(--warm-gray);border-radius:var(--radius);
+  padding:2rem;text-align:center;cursor:pointer;
+  transition:var(--transition);position:relative;
+}
+.file-upload:hover{border-color:var(--gold);background:rgba(197,165,90,0.04)}
+.file-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.file-upload .icon{font-size:2rem;margin-bottom:0.5rem}
+.file-upload p{font-size:0.85rem;color:var(--text-muted)}
+.preview-img{
+  max-width:200px;max-height:150px;border-radius:8px;margin-top:1rem;
+  object-fit:cover;
+}
+
+/* ── Toast Notification ── */
+.toast{
+  position:fixed;bottom:2rem;right:2rem;z-index:9000;
+  background:var(--bordeaux);color:var(--cream);
+  padding:0.85rem 1.5rem;border-radius:10px;
+  font-size:0.88rem;font-weight:500;
+  box-shadow:var(--shadow-lg);
+  transform:translateY(100px);opacity:0;
+  transition:all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#27ae60}
+.toast.error{background:#c0392b}
+
+/* ── Empty State ── */
+.empty-state{
+  text-align:center;padding:3rem 1.5rem;
+  color:var(--text-muted);
+}
+.empty-state .icon{font-size:3rem;margin-bottom:1rem;opacity:0.4}
+.empty-state p{font-size:0.95rem;font-weight:300}
+
+/* ── Footer ── */
+footer{
+  text-align:center;padding:2rem 1.5rem;
+  border-top:1px solid rgba(90,26,34,0.06);
+  margin-top:3rem;
+}
+footer p{font-size:0.78rem;color:var(--text-light);font-weight:300}
+footer a{color:var(--gold-dark);text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  main{padding:1rem}
+  .hero{padding:2rem 1rem 1.5rem}
+  .categories-grid,.products-grid{grid-template-columns:1fr}
+  .modal{margin:0.5rem;max-height:95vh}
+  .modal-img{height:200px}
+  .login-card{margin:1.5rem;padding:1.75rem}
+  .admin-section{padding:1rem}
+  .toast{left:1rem;right:1rem;bottom:1rem;text-align:center}
+}
+@media(min-width:769px) and (max-width:1024px){
+  .categories-grid{grid-template-columns:repeat(2,1fr)}
+  .products-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Tabs for Admin ── */
+.admin-tabs{display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.admin-tabs button{
+  padding:0.6rem 1.2rem;border-radius:10px;border:1.5px solid var(--warm-gray);
+  background:transparent;font-family:var(--font-body);font-size:0.85rem;
+  font-weight:500;cursor:pointer;transition:var(--transition);color:var(--text-muted);
+}
+.admin-tabs button.active{
+  background:var(--bordeaux);color:var(--cream);border-color:var(--bordeaux);
+}
+.admin-tabs button:hover:not(.active){border-color:var(--bordeaux);color:var(--bordeaux)}
+.admin-tab-content{display:none}
+.admin-tab-content.active{display:block;animation:fadeUp 0.3s ease}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="logo-text">Bestattungshaus Kallwaß</div>
+  <div class="loader"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Mobile Nav Overlay -->
+<div class="nav-overlay" id="navOverlay" onclick="toggleMobileNav()"></div>
+
+<!-- Header -->
+<header>
+  <div class="header-inner">
+    <a class="brand" href="#" onclick="showPage('catalog');return false">
+      <div class="brand-icon">K</div>
+      <div class="brand-name">Bestattungshaus <span>Kallwaß</span></div>
+    </a>
+    <button class="mobile-menu-btn" onclick="toggleMobileNav()" aria-label="Menü">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <nav id="mainNav">
+      <button class="nav-close" onclick="toggleMobileNav()" style="display:none">✕</button>
+      <button onclick="showPage('catalog')" data-page="catalog" class="active">Katalog</button>
+      <button onclick="showPage('about')" data-page="about">Über uns</button>
+      <button onclick="showPage('admin')" data-page="admin" class="admin-btn" id="adminNavBtn">Verwaltung</button>
+    </nav>
+  </div>
+</header>
+
+<!-- Main -->
+<main>
+
+  <!-- Catalog Page -->
+  <div id="page-catalog" class="page active">
+    <div class="hero">
+      <h1>Würdevolle <em>Begleitung</em><br>in schweren Zeiten</h1>
+      <div class="gold-line"></div>
+      <p>Entdecken Sie unsere Auswahl an hochwertigen Produkten und Dienstleistungen für eine persönliche und würdevolle Abschiednahme.</p>
+    </div>
+    <div id="categoriesGrid" class="categories-grid"></div>
+  </div>
+
+  <!-- Products Page (Category Detail) -->
+  <div id="page-products" class="page">
+    <div class="products-header">
+      <button class="back-btn" onclick="showPage('catalog')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4l-4 4 4 4"/></svg>
+        Zurück
+      </button>
+      <h2 id="productsTitle">Kategorie</h2>
+    </div>
+    <div id="productsGrid" class="products-grid"></div>
+  </div>
+
+  <!-- About Page -->
+  <div id="page-about" class="page">
+    <div class="hero">
+      <h1>Über <em>Uns</em></h1>
+      <div class="gold-line"></div>
+      <p>Das Bestattungshaus Kallwaß steht seit über 35 Jahren für einfühlsame und professionelle Begleitung in der Region. Wir sind für Sie da – persönlich, kompetent und mit Herz.</p>
+    </div>
+    <div style="max-width:640px;margin:0 auto;">
+      <div style="background:var(--warm-white);border-radius:var(--radius-lg);padding:2rem;border:1px solid rgba(90,26,34,0.06);">
+        <h3 style="font-family:var(--font-display);font-size:1.3rem;color:var(--bordeaux);margin-bottom:1rem">Unsere Philosophie</h3>
+        <p style="font-size:0.92rem;color:var(--text-muted);line-height:1.8;font-weight:300">
+          Jeder Mensch ist einzigartig – und genauso einzigartig sollte auch der letzte Abschied sein. 
+          Wir nehmen uns die Zeit, die Sie brauchen, und beraten Sie umfassend zu allen Möglichkeiten 
+          einer würdevollen Bestattung. Von der Auswahl des Sarges oder der Urne über die Blumengestaltung 
+          bis hin zur Wahl des Friedhofs – wir begleiten Sie bei jedem Schritt.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Page -->
+  <div id="page-admin" class="page">
+    <!-- Login -->
+    <div id="adminLogin">
+      <div class="login-card">
+        <h2>Verwaltung</h2>
+        <p class="subtitle">Melden Sie sich an, um den Katalog zu verwalten</p>
+        <div class="form-group">
+          <label>E-Mail</label>
+          <input type="email" id="loginEmail" placeholder="admin@bh-kallwass.de" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Passwort</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()" id="loginBtn">Anmelden</button>
+      </div>
+    </div>
+
+    <!-- Dashboard (hidden until login) -->
+    <div id="adminDashboard" style="display:none">
+      <div class="admin-header">
+        <h2>Verwaltung</h2>
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn btn-outline btn-sm" onclick="doLogout()">Abmelden</button>
+        </div>
+      </div>
+
+      <div class="admin-stats" id="adminStats"></div>
+
+      <div class="admin-tabs">
+        <button class="active" onclick="switchAdminTab('categories',this)">Kategorien</button>
+        <button onclick="switchAdminTab('products',this)">Produkte</button>
+      </div>
+
+      <!-- Categories Tab -->
+      <div id="tab-categories" class="admin-tab-content active">
+        <div class="admin-section">
+          <h3>Neue Kategorie</h3>
+          <div style="display:grid;gap:1rem;grid-template-columns:1fr 1fr">
+            <div class="form-group" style="margin:0">
+              <label>Name</label>
+              <input type="text" id="catName" placeholder="z.B. Särge">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Beschreibung</label>
+              <input type="text" id="catDesc" placeholder="Kurze Beschreibung">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:1rem">
+            <label>Symbol (Emoji)</label>
+            <input type="text" id="catIcon" placeholder="⚱️" maxlength="4" style="max-width:80px">
+          </div>
+          <div class="file-upload" style="margin-top:1rem">
+            <input type="file" accept="image/*" id="catImage" onchange="previewFile(this,'catPreview')">
+            <div class="icon">📷</div>
+            <p>Kategorie-Bild hochladen (optional)</p>
+            <img id="catPreview" class="preview-img" style="display:none">
+          </div>
+          <button class="btn btn-gold" style="margin-top:1rem" onclick="addCategory()">Kategorie hinzufügen</button>
+        </div>
+
+        <div class="admin-section">
+          <h3>Kategorien</h3>
+          <ul class="admin-list" id="adminCatList"></ul>
+        </div>
+      </div>
+
+      <!-- Products Tab -->
+      <div id="tab-products" class="admin-tab-content">
+        <div class="admin-section">
+          <h3>Neues Produkt</h3>
+          <div class="form-group">
+            <label>Kategorie</label>
+            <select id="prodCat"></select>
+          </div>
+          <div style="display:grid;gap:1rem;grid-template-columns:1fr 1fr">
+            <div class="form-group" style="margin:0">
+              <label>Name</label>
+              <input type="text" id="prodName" placeholder="z.B. Eichensarg Classique">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Preis</label>
+              <input type="text" id="prodPrice" placeholder="z.B. ab 1.200 €">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Beschreibung</label>
+            <textarea id="prodDesc" placeholder="Produktbeschreibung…"></textarea>
+          </div>
+          <div class="file-upload">
+            <input type="file" accept="image/*" id="prodImage" onchange="previewFile(this,'prodPreview')">
+            <div class="icon">📷</div>
+            <p>Produktbild hochladen</p>
+            <img id="prodPreview" class="preview-img" style="display:none">
+          </div>
+          <button class="btn btn-gold" style="margin-top:1rem" onclick="addProduct()">Produkt hinzufügen</button>
+        </div>
+
+        <div class="admin-section">
+          <h3>Produkte</h3>
+          <div class="form-group">
+            <label>Filter nach Kategorie</label>
+            <select id="prodFilterCat" onchange="renderAdminProducts()">
+              <option value="">Alle</option>
+            </select>
+          </div>
+          <ul class="admin-list" id="adminProdList"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Product Detail Modal -->
+<div class="modal-overlay" id="productModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-img" id="modalImg"></div>
+    <div class="modal-body">
+      <h2 id="modalTitle"></h2>
+      <div class="price" id="modalPrice"></div>
+      <div class="desc" id="modalDesc"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <p>&copy; 2026 Bestattungshaus Kallwaß · <a href="#" onclick="showPage('admin');return false">Verwaltung</a></p>
+</footer>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+<script>
+// ── Firebase Config ──
+const firebaseConfig = {
+  apiKey: "AIzaSyDzxxj-kK4eo2RgW-ZQt26cJzHGRs75WbQ",
+  authDomain: "beratungsapp-bh-kallwass.firebaseapp.com",
+  projectId: "beratungsapp-bh-kallwass",
+  storageBucket: "beratungsapp-bh-kallwass.firebasestorage.app",
+  messagingSenderId: "828236712026",
+  appId: "1:828236712026:web:40ed5111d7720d3a10b063"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// Enable offline persistence
+db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+  console.log('Persistence error:', err.code);
+});
+
+// ── State ──
+let categories = [];
+let products = [];
+let currentUser = null;
+let currentCategory = null;
+
+// ── Local Cache ──
+const CACHE_KEY_CATS = 'bh_kallwass_cats';
+const CACHE_KEY_PRODS = 'bh_kallwass_prods';
+
+function saveToCache(key, data) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+}
+function loadFromCache(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e) { return []; }
+}
+
+// ── Init ──
+window.addEventListener('DOMContentLoaded', () => {
+  // Load from cache first for instant display
+  categories = loadFromCache(CACHE_KEY_CATS);
+  products = loadFromCache(CACHE_KEY_PRODS);
+  renderCategories();
+
+  // Listen for real-time updates
+  db.collection('categories').orderBy('order', 'asc').onSnapshot(snap => {
+    categories = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    saveToCache(CACHE_KEY_CATS, categories);
+    renderCategories();
+    renderAdminCategories();
+    updateCategorySelects();
+    updateStats();
+  }, err => console.log('Cat listener error:', err));
+
+  db.collection('products').orderBy('createdAt', 'desc').onSnapshot(snap => {
+    products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    saveToCache(CACHE_KEY_PRODS, products);
+    if (currentCategory) renderProducts(currentCategory);
+    renderAdminProducts();
+    updateStats();
+  }, err => console.log('Prod listener error:', err));
+
+  // Auth state
+  auth.onAuthStateChanged(user => {
+    currentUser = user;
+    if (user) {
+      document.getElementById('adminLogin').style.display = 'none';
+      document.getElementById('adminDashboard').style.display = 'block';
+      document.getElementById('adminNavBtn').textContent = 'Verwaltung ●';
+    } else {
+      document.getElementById('adminLogin').style.display = 'block';
+      document.getElementById('adminDashboard').style.display = 'none';
+      document.getElementById('adminNavBtn').textContent = 'Verwaltung';
+    }
+  });
+
+  // Hide loading screen
+  setTimeout(() => {
+    document.getElementById('loading-screen').classList.add('hidden');
+  }, 800);
+});
+
+// ── Navigation ──
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  document.querySelectorAll('nav button[data-page]').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === pageId);
+  });
+  closeMobileNav();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function toggleMobileNav() {
+  const nav = document.getElementById('mainNav');
+  const overlay = document.getElementById('navOverlay');
+  const isOpen = nav.classList.contains('open');
+  nav.classList.toggle('open');
+  overlay.classList.toggle('active');
+  nav.querySelector('.nav-close').style.display = isOpen ? 'none' : 'block';
+}
+function closeMobileNav() {
+  document.getElementById('mainNav').classList.remove('open');
+  document.getElementById('navOverlay').classList.remove('active');
+}
+
+// ── Render Categories (Public) ──
+function renderCategories() {
+  const grid = document.getElementById('categoriesGrid');
+  if (!categories.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="icon">📋</div>
+      <p>Noch keine Kategorien angelegt.<br>Melden Sie sich in der Verwaltung an, um den Katalog zu befüllen.</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = categories.map(cat => {
+    const count = products.filter(p => p.categoryId === cat.id).length;
+    const imgHtml = cat.imageUrl 
+      ? `<img src="${cat.imageUrl}" alt="${esc(cat.name)}" loading="lazy">` 
+      : `<span>${cat.icon || '📁'}</span>`;
+    return `<div class="cat-card" onclick="openCategory('${cat.id}')">
+      <div class="cat-card-img">${imgHtml}</div>
+      <span class="cat-card-count">${count} ${count === 1 ? 'Produkt' : 'Produkte'}</span>
+      <div class="cat-card-body">
+        <h3>${esc(cat.name)}</h3>
+        <p>${esc(cat.description || '')}</p>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Open Category ──
+function openCategory(catId) {
+  currentCategory = catId;
+  const cat = categories.find(c => c.id === catId);
+  document.getElementById('productsTitle').textContent = cat ? cat.name : 'Produkte';
+  renderProducts(catId);
+  showPage('products');
+}
+
+// ── Render Products (Public) ──
+function renderProducts(catId) {
+  const grid = document.getElementById('productsGrid');
+  const filtered = products.filter(p => p.categoryId === catId);
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="icon">📦</div>
+      <p>In dieser Kategorie sind noch keine Produkte vorhanden.</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(prod => {
+    const imgHtml = prod.imageUrl 
+      ? `<img src="${prod.imageUrl}" alt="${esc(prod.name)}" loading="lazy">` 
+      : '';
+    return `<div class="product-card" onclick='openProduct(${JSON.stringify(prod).replace(/'/g,"&#39;")})'>
+      <div class="product-card-img">${imgHtml}</div>
+      <div class="product-card-body">
+        <h4>${esc(prod.name)}</h4>
+        ${prod.price ? `<div class="price">${esc(prod.price)}</div>` : ''}
+        <div class="desc">${esc(prod.description || '').substring(0, 100)}${(prod.description||'').length > 100 ? '…' : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Product Modal ──
+function openProduct(prod) {
+  const modal = document.getElementById('productModal');
+  document.getElementById('modalImg').innerHTML = prod.imageUrl 
+    ? `<img src="${prod.imageUrl}" alt="${esc(prod.name)}">` : '';
+  document.getElementById('modalTitle').textContent = prod.name;
+  document.getElementById('modalPrice').textContent = prod.price || '';
+  document.getElementById('modalDesc').textContent = prod.description || '';
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  document.getElementById('productModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// ── Auth ──
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw = document.getElementById('loginPassword').value;
+  if (!email || !pw) return toast('Bitte E-Mail und Passwort eingeben', 'error');
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Wird angemeldet…';
+  try {
+    await auth.signInWithEmailAndPassword(email, pw);
+    toast('Erfolgreich angemeldet!', 'success');
+  } catch(err) {
+    console.error(err);
+    toast('Login fehlgeschlagen: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Anmelden';
+}
+
+function doLogout() {
+  auth.signOut();
+  toast('Abgemeldet');
+}
+
+// ── Admin: Categories ──
+async function addCategory() {
+  const name = document.getElementById('catName').value.trim();
+  const desc = document.getElementById('catDesc').value.trim();
+  const icon = document.getElementById('catIcon').value.trim();
+  const fileInput = document.getElementById('catImage');
+  if (!name) return toast('Bitte Kategorienamen eingeben', 'error');
+
+  let imageUrl = '';
+  if (fileInput.files[0]) {
+    imageUrl = await uploadImage(fileInput.files[0], 'categories');
+  }
+
+  await db.collection('categories').add({
+    name, description: desc, icon: icon || '📁', imageUrl,
+    order: categories.length,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  document.getElementById('catName').value = '';
+  document.getElementById('catDesc').value = '';
+  document.getElementById('catIcon').value = '';
+  fileInput.value = '';
+  document.getElementById('catPreview').style.display = 'none';
+  toast('Kategorie hinzugefügt!', 'success');
+}
+
+async function deleteCategory(id) {
+  if (!confirm('Kategorie wirklich löschen? Alle zugehörigen Produkte bleiben erhalten.')) return;
+  await db.collection('categories').doc(id).delete();
+  toast('Kategorie gelöscht');
+}
+
+function renderAdminCategories() {
+  const list = document.getElementById('adminCatList');
+  if (!list) return;
+  if (!categories.length) {
+    list.innerHTML = '<li style="justify-content:center;color:var(--text-muted);font-size:0.9rem">Noch keine Kategorien</li>';
+    return;
+  }
+  list.innerHTML = categories.map(cat => `
+    <li>
+      <div class="item-info">
+        ${cat.imageUrl ? `<img class="item-thumb" src="${cat.imageUrl}">` : `<div class="item-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem">${cat.icon || '📁'}</div>`}
+        <div>
+          <div class="item-name">${esc(cat.name)}</div>
+          <div style="font-size:0.75rem;color:var(--text-light)">${products.filter(p=>p.categoryId===cat.id).length} Produkte</div>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="del" onclick="deleteCategory('${cat.id}')" title="Löschen">🗑</button>
+      </div>
+    </li>
+  `).join('');
+}
+
+// ── Admin: Products ──
+async function addProduct() {
+  const catId = document.getElementById('prodCat').value;
+  const name = document.getElementById('prodName').value.trim();
+  const price = document.getElementById('prodPrice').value.trim();
+  const desc = document.getElementById('prodDesc').value.trim();
+  const fileInput = document.getElementById('prodImage');
+
+  if (!catId) return toast('Bitte Kategorie wählen', 'error');
+  if (!name) return toast('Bitte Produktnamen eingeben', 'error');
+
+  let imageUrl = '';
+  if (fileInput.files[0]) {
+    imageUrl = await uploadImage(fileInput.files[0], 'products');
+  }
+
+  await db.collection('products').add({
+    categoryId: catId, name, price, description: desc, imageUrl,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  document.getElementById('prodName').value = '';
+  document.getElementById('prodPrice').value = '';
+  document.getElementById('prodDesc').value = '';
+  fileInput.value = '';
+  document.getElementById('prodPreview').style.display = 'none';
+  toast('Produkt hinzugefügt!', 'success');
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Produkt wirklich löschen?')) return;
+  await db.collection('products').doc(id).delete();
+  toast('Produkt gelöscht');
+}
+
+function renderAdminProducts() {
+  const list = document.getElementById('adminProdList');
+  if (!list) return;
+  const filterCat = document.getElementById('prodFilterCat')?.value || '';
+  const filtered = filterCat ? products.filter(p => p.categoryId === filterCat) : products;
+  if (!filtered.length) {
+    list.innerHTML = '<li style="justify-content:center;color:var(--text-muted);font-size:0.9rem">Keine Produkte</li>';
+    return;
+  }
+  list.innerHTML = filtered.map(prod => {
+    const cat = categories.find(c => c.id === prod.categoryId);
+    return `<li>
+      <div class="item-info">
+        ${prod.imageUrl ? `<img class="item-thumb" src="${prod.imageUrl}">` : `<div class="item-thumb"></div>`}
+        <div>
+          <div class="item-name">${esc(prod.name)}</div>
+          <div style="font-size:0.75rem;color:var(--text-light)">${cat ? cat.name : '–'} ${prod.price ? '· ' + prod.price : ''}</div>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="del" onclick="deleteProduct('${prod.id}')" title="Löschen">🗑</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+// ── Category Selects ──
+function updateCategorySelects() {
+  const selects = [document.getElementById('prodCat'), document.getElementById('prodFilterCat')];
+  selects.forEach(sel => {
+    if (!sel) return;
+    const val = sel.value;
+    const isFilter = sel.id === 'prodFilterCat';
+    sel.innerHTML = (isFilter ? '<option value="">Alle</option>' : '<option value="">Kategorie wählen…</option>') +
+      categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    sel.value = val;
+  });
+}
+
+// ── Admin Tabs ──
+function switchAdminTab(tab, btn) {
+  document.querySelectorAll('.admin-tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-tabs button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Stats ──
+function updateStats() {
+  const el = document.getElementById('adminStats');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="stat-card"><div class="num">${categories.length}</div><div class="label">Kategorien</div></div>
+    <div class="stat-card"><div class="num">${products.length}</div><div class="label">Produkte</div></div>
+    <div class="stat-card"><div class="num">${products.filter(p=>p.imageUrl).length}</div><div class="label">Mit Bild</div></div>
+  `;
+}
+
+// ── Image Upload ──
+async function uploadImage(file, folder) {
+  const timestamp = Date.now();
+  const ext = file.name.split('.').pop();
+  const ref = storage.ref(`${folder}/${timestamp}.${ext}`);
+  
+  // Compress if too large
+  let uploadFile = file;
+  if (file.size > 1024 * 1024) {
+    uploadFile = await compressImage(file, 0.7, 1200);
+  }
+  
+  const snap = await ref.put(uploadFile);
+  return await snap.ref.getDownloadURL();
+}
+
+function compressImage(file, quality, maxWidth) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = h * maxWidth / w; w = maxWidth; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function previewFile(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+    reader.readAsDataURL(input.files[0]);
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+// ── Toast ──
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Escape HTML ──
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+// ── Keyboard Support ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeMobileNav(); }
+  if (e.key === 'Enter' && document.activeElement?.id === 'loginPassword') doLogin();
+});
+</script>
+</body>
+</html>
