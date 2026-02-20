@@ -195,6 +195,15 @@ footer p{font-size:0.78rem;color:var(--text-light);font-weight:300}
 footer a{color:var(--gold-dark);text-decoration:none}footer a:hover{text-decoration:underline}
 @media(max-width:640px){main{padding:1rem}.hero{padding:2rem 1rem 1.5rem}.categories-grid,.products-grid{grid-template-columns:1fr}.modal{margin:0.5rem;max-height:95vh}.modal-img{height:200px}.login-card{margin:1.5rem;padding:1.75rem}.admin-section{padding:1rem}.toast{left:1rem;right:1rem;bottom:1rem;text-align:center}.edit-modal-overlay{padding:1rem}.edit-modal{max-width:100%}}
 @media(min-width:769px) and (max-width:1024px){.categories-grid{grid-template-columns:repeat(2,1fr)}.products-grid{grid-template-columns:repeat(2,1fr)}}
+/* Zoom Viewer */
+.zoom-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:700;display:none;flex-direction:column;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.zoom-overlay.active{display:flex}
+.zoom-close{position:absolute;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:710;transition:var(--transition)}
+.zoom-close:hover{background:rgba(255,255,255,0.3)}
+.zoom-hint{position:absolute;bottom:1.5rem;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:0.78rem;font-weight:400;pointer-events:none;transition:opacity 0.5s ease}
+.zoom-container{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:zoom-in;touch-action:none}
+.zoom-container.zoomed{cursor:zoom-out}
+.zoom-container img{max-width:90%;max-height:85vh;object-fit:contain;transition:transform 0.3s ease;transform-origin:center center;user-select:none;-webkit-user-select:none;pointer-events:none}
 </style>
 </head>
 <body>
@@ -350,6 +359,13 @@ footer a{color:var(--gold-dark);text-decoration:none}footer a:hover{text-decorat
   </div>
 </div>
 
+<div class="zoom-overlay" id="zoomOverlay" onclick="handleZoomClick(event)">
+  <button class="zoom-close" onclick="closeZoom(event)">✕</button>
+  <div class="zoom-container" id="zoomContainer">
+    <img id="zoomImg" src="" alt="">
+  </div>
+  <div class="zoom-hint" id="zoomHint">Doppeltippen oder Pinch zum Zoomen</div>
+</div>
 <footer><p>&copy; 2026 Bestattungshaus Kallwaß · <a href="#" onclick="navTo('admin');return false">Verwaltung</a></p></footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -450,7 +466,8 @@ function openProductModal(idx,catId){
   let filtered=products.filter(p=>p.categoryId===catId);
   if(currentSubcatFilter)filtered=filtered.filter(p=>p.subcategory===currentSubcatFilter);
   const prod=filtered[idx];if(!prod)return;
-  document.getElementById('modalImg').innerHTML=prod.imageUrl?'<img src="'+prod.imageUrl+'" alt="'+esc(prod.name)+'">':'';
+  document.getElementById('modalImg').innerHTML=prod.imageUrl?'<img src="'+prod.imageUrl+'" alt="'+esc(prod.name)+'" style="cursor:zoom-in">':'';
+  var mimg=document.querySelector('#modalImg img');if(mimg){mimg.onclick=function(){openZoom(prod.imageUrl)}};
   document.getElementById('modalTitle').textContent=prod.name;
   document.getElementById('modalPrice').textContent=prod.price||'';
   document.getElementById('modalDesc').textContent=prod.description||'';
@@ -615,7 +632,78 @@ function compressImage(file,quality,maxW){
 function previewFile(input,id){const p=document.getElementById(id);if(input.files[0]){const r=new FileReader();r.onload=e=>{p.src=e.target.result;p.style.display='block'};r.readAsDataURL(input.files[0])}else p.style.display='none'}
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;setTimeout(()=>t.classList.add('show'),10);setTimeout(()=>t.classList.remove('show'),3000)}
 function esc(str){const d=document.createElement('div');d.textContent=str||'';return d.innerHTML}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeEditCat();closeMobileNav()}if(e.key==='Enter'&&document.activeElement?.id==='loginPassword')doLogin()});
+/* === ZOOM VIEWER === */
+let zoomLevel=1,zoomPosX=0,zoomPosY=0,isDragging=false,dragStartX=0,dragStartY=0,lastTap=0;
+function openZoom(imgSrc){
+  if(!imgSrc)return;
+  const ov=document.getElementById('zoomOverlay');
+  document.getElementById('zoomImg').src=imgSrc;
+  zoomLevel=1;zoomPosX=0;zoomPosY=0;updateZoomTransform();
+  ov.classList.add('active');document.body.style.overflow='hidden';
+  document.getElementById('zoomContainer').classList.remove('zoomed');
+  const hint=document.getElementById('zoomHint');hint.style.opacity='1';
+  setTimeout(function(){hint.style.opacity='0'},2500);
+}
+function closeZoom(e){
+  if(e)e.stopPropagation();
+  document.getElementById('zoomOverlay').classList.remove('active');
+  document.body.style.overflow='';zoomLevel=1;zoomPosX=0;zoomPosY=0;
+}
+function handleZoomClick(e){
+  var t=e.target;
+  if(t.id==='zoomOverlay'||t.id==='zoomContainer'){
+    if(zoomLevel>1){zoomLevel=1;zoomPosX=0;zoomPosY=0;updateZoomTransform();document.getElementById('zoomContainer').classList.remove('zoomed')}
+    else closeZoom();
+  }
+}
+function updateZoomTransform(){
+  document.getElementById('zoomImg').style.transform='scale('+zoomLevel+') translate('+zoomPosX+'px,'+zoomPosY+'px)';
+}
+(function initZoom(){
+  setTimeout(function(){
+    var c=document.getElementById('zoomContainer');if(!c)return;
+    c.addEventListener('dblclick',function(e){
+      e.preventDefault();
+      if(zoomLevel>1){zoomLevel=1;zoomPosX=0;zoomPosY=0;c.classList.remove('zoomed')}
+      else{zoomLevel=2.5;c.classList.add('zoomed')}
+      updateZoomTransform();
+    });
+    c.addEventListener('touchstart',function(e){
+      if(e.touches.length===1){
+        var now=Date.now();
+        if(now-lastTap<300){e.preventDefault();
+          if(zoomLevel>1){zoomLevel=1;zoomPosX=0;zoomPosY=0;c.classList.remove('zoomed')}
+          else{zoomLevel=2.5;c.classList.add('zoomed')}
+          updateZoomTransform();
+        }
+        lastTap=now;
+        if(zoomLevel>1){isDragging=true;dragStartX=e.touches[0].clientX-zoomPosX*zoomLevel;dragStartY=e.touches[0].clientY-zoomPosY*zoomLevel}
+      }
+      if(e.touches.length===2){e.preventDefault();c._pinchStart=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);c._pinchZoom=zoomLevel}
+    },{passive:false});
+    c.addEventListener('touchmove',function(e){
+      if(e.touches.length===2&&c._pinchStart){e.preventDefault();
+        var dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+        zoomLevel=Math.min(5,Math.max(1,c._pinchZoom*(dist/c._pinchStart)));
+        if(zoomLevel<=1){zoomPosX=0;zoomPosY=0;c.classList.remove('zoomed')}else{c.classList.add('zoomed')}
+        updateZoomTransform();
+      }else if(e.touches.length===1&&isDragging&&zoomLevel>1){e.preventDefault();
+        zoomPosX=(e.touches[0].clientX-dragStartX)/zoomLevel;zoomPosY=(e.touches[0].clientY-dragStartY)/zoomLevel;
+        updateZoomTransform();
+      }
+    },{passive:false});
+    c.addEventListener('touchend',function(e){
+      isDragging=false;if(e.touches.length<2)c._pinchStart=null;
+      if(zoomLevel<=1.05){zoomLevel=1;zoomPosX=0;zoomPosY=0;c.classList.remove('zoomed');updateZoomTransform()}
+    });
+    c.addEventListener('wheel',function(e){e.preventDefault();
+      zoomLevel=Math.min(5,Math.max(1,zoomLevel*(e.deltaY>0?0.8:1.25)));
+      if(zoomLevel<=1){zoomPosX=0;zoomPosY=0;c.classList.remove('zoomed')}else{c.classList.add('zoomed')}
+      updateZoomTransform();
+    },{passive:false});
+  },500);
+})();
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeZoom();closeModal();closeEditCat();closeMobileNav()}if(e.key==='Enter'&&document.activeElement?.id==='loginPassword')doLogin()});
 </script>
 </body>
 </html>
