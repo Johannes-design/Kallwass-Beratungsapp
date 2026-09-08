@@ -942,10 +942,20 @@ const GRUPPEN={
   ]
 };
 
+/* Kategorien, deren Unterkategorien als große Kacheln statt als Knopfreihe
+   ausgewählt werden. Kategorien mit Gruppen (oben) sind automatisch dabei. */
+const KACHEL_KATEGORIEN=['Blumen'];
+
 let currentGruppe=null;
 
 function gruppenFuer(cat){
   return (cat&&GRUPPEN[cat.name])||null;
+}
+
+function nutztKacheln(cat){
+  if(!cat)return false;
+  if(gruppenFuer(cat))return true;
+  return KACHEL_KATEGORIEN.indexOf(cat.name)>-1&&(cat.subcategories||[]).length>0;
 }
 
 /* Orte einer Gruppe. Die Gruppe ohne feste Liste bekommt alles, was sonst
@@ -978,7 +988,7 @@ function openCategory(catId){
 /* Zurück-Knopf: eine Ebene hoch statt gleich zum Katalog. */
 function einenSchrittZurueck(){
   const cat=categories.find(c=>c.id===currentCategory);
-  if(currentSubcatFilter&&gruppenFuer(cat)){currentSubcatFilter=null;zeichneProduktseite();return}
+  if(currentSubcatFilter&&nutztKacheln(cat)){currentSubcatFilter=null;zeichneProduktseite();return}
   if(currentGruppe){currentGruppe=null;zeichneProduktseite();return}
   navTo('catalog');
 }
@@ -1007,30 +1017,30 @@ function zeichneProduktseite(){
       const n=anzahlIn(currentCategory,orte);
       const bild=motivFuer(currentCategory,orte);
       return kachel(bild,g.name,orte.length+(orte.length===1?' Ort':' Orte'),n,
-        'waehleGruppe('+JSON.stringify(g.name)+')');
+        'waehleGruppe('+JSON.stringify(g.name)+')',cat.icon);
     }).join('');
     window.scrollTo({top:0,behavior:'smooth'});
     return;
   }
 
-  // Ebene 2 – Ort wählen
-  if(gruppen&&!currentSubcatFilter){
-    const g=gruppen.find(x=>x.name===currentGruppe);
+  // Ebene 2 – Unterkategorie wählen (Ort, Blumenart, …)
+  if(nutztKacheln(cat)&&!currentSubcatFilter){
+    const g=gruppen?gruppen.find(x=>x.name===currentGruppe):null;
     const orte=g?orteDerGruppe(cat,g):subs;
-    titel.textContent=currentGruppe;
+    titel.textContent=currentGruppe||cat.name;
     grid.className='categories-grid';
     grid.innerHTML=orte.map(ort=>{
       const n=products.filter(p=>p.categoryId===currentCategory&&p.subcategory===ort).length;
       const bild=motivFuer(currentCategory,[ort]);
-      return kachel(bild,ort,'',n,'waehleOrt('+JSON.stringify(ort)+')');
-    }).join('')||'<div class="empty-state" style="grid-column:1/-1"><div class="icon">📍</div><p>Hier ist noch nichts hinterlegt.</p></div>';
+      return kachel(bild,ort,'',n,'waehleOrt('+JSON.stringify(ort)+')',cat.icon);
+    }).join('')||'<div class="empty-state" style="grid-column:1/-1"><div class="icon">📦</div><p>Hier ist noch nichts hinterlegt.</p></div>';
     window.scrollTo({top:0,behavior:'smooth'});
     return;
   }
 
-  // Ebene 3 – die Bilder. Ohne Gruppen bleibt es bei der Knopfreihe wie bisher.
+  // Ebene 3 – die Bilder. Ohne Kacheln bleibt es bei der Knopfreihe wie bisher.
   grid.className='products-grid';
-  if(gruppen){
+  if(nutztKacheln(cat)){
     titel.textContent=currentSubcatFilter;
   } else {
     titel.textContent=cat.name;
@@ -1050,10 +1060,10 @@ function zeichneProduktseite(){
 }
 
 /* Eine Kachel im Stil der Startseiten-Kategorien. */
-function kachel(bild,name,zusatz,anzahl,aktion){
+function kachel(bild,name,zusatz,anzahl,aktion,symbol){
   const inhalt=bild
     ? '<img src="'+esc(bild)+'" alt="'+esc(name)+'" loading="lazy" onerror="bildFehlt(this)">'
-    : '<span>📍</span>';
+    : '<span>'+esc(symbol||'📁')+'</span>';
   const zaehler=anzahl?anzahl+(anzahl===1?' Bild':' Bilder'):'noch ohne Bild';
   return '<div class="cat-card" onclick="'+esc(aktion).replace(/"/g,'&quot;')+'">'+
     '<div class="cat-card-img">'+inhalt+'</div>'+
@@ -1389,11 +1399,25 @@ async function saveEditCat(){
 }
 
 async function addSubcategory(catId){
-  const input=document.getElementById('subcat-input-'+catId);const name=input.value.trim();if(!name)return;
-  const cat=categories.find(c=>c.id===catId);const subs=[...(cat.subcategories||[])];
-  if(subs.includes(name))return toast('Existiert bereits','error');
-  subs.push(name);await db.collection('categories').doc(catId).update({subcategories:subs});
-  input.value='';toast('Unterkategorie hinzugefügt!','success');
+  const input=document.getElementById('subcat-input-'+catId);
+  // Mehrere auf einmal: durch Komma oder Semikolon getrennt eingeben oder einfügen.
+  const namen=input.value.split(/[,;\n]/).map(s=>s.trim()).filter(Boolean);
+  if(!namen.length)return;
+  const cat=categories.find(c=>c.id===catId);
+  const subs=[...(cat.subcategories||[])];
+  const neu=[],schon=[];
+  namen.forEach(n=>{
+    if(subs.includes(n)||neu.includes(n))schon.push(n);else neu.push(n);
+  });
+  if(!neu.length)return toast(schon.length===1?'Existiert bereits':'Existieren alle bereits','error');
+  try{
+    await db.collection('categories').doc(catId).update({subcategories:subs.concat(neu)});
+    input.value='';
+    toast(neu.length===1?'Unterkategorie hinzugefügt!':(neu.length+' Unterkategorien hinzugefügt!')+
+      (schon.length?' ('+schon.length+' gab es schon)':''),'success');
+  }catch(e){
+    fehlerMelden('Unterkategorie konnte nicht angelegt werden',e);
+  }
 }
 async function removeSubcategory(catId,subName){
   if(!confirm('"'+subName+'" entfernen?'))return;
@@ -1409,7 +1433,7 @@ function renderAdminCategories(){
     const pc=products.filter(p=>p.categoryId===cat.id).length;
     const isFirst=idx===0,isLast=idx===categories.length-1;
     const subcatsHtml=cat.hasSubcategories?
-      '<ul class="subcat-list">'+(cat.subcategories||[]).map(sc=>'<li><span style="color:var(--text-muted)">↳ '+esc(sc)+'</span><button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:0.8rem;margin-left:0.5rem" onclick="removeSubcategory(\''+cat.id+'\',\''+esc(sc).replace(/'/g,"\\'")+'\')">✕</button></li>').join('')+'</ul><div class="subcat-inline"><input type="text" id="subcat-input-'+cat.id+'" placeholder="Neue Unterkategorie…" onkeydown="if(event.key===\'Enter\')addSubcategory(\''+cat.id+'\')"><button onclick="addSubcategory(\''+cat.id+'\')">+ Hinzufügen</button></div>':'';
+      '<ul class="subcat-list">'+(cat.subcategories||[]).map(sc=>'<li><span style="color:var(--text-muted)">↳ '+esc(sc)+'</span><button style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:0.8rem;margin-left:0.5rem" onclick="removeSubcategory(\''+cat.id+'\',\''+esc(sc).replace(/'/g,"\\'")+'\')">✕</button></li>').join('')+'</ul><div class="subcat-inline"><input type="text" id="subcat-input-'+cat.id+'" placeholder="Neue Unterkategorie – mehrere mit Komma trennen" onkeydown="if(event.key===\'Enter\')addSubcategory(\''+cat.id+'\')"><button onclick="addSubcategory(\''+cat.id+'\')">+ Hinzufügen</button></div>':'';
     return '<li style="flex-direction:column;align-items:stretch;display:flex"><div class="cat-row"><div class="item-info">'+(cat.imageUrl?'<img class="item-thumb" src="'+cat.imageUrl+'">':'<div class="item-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem">'+(cat.icon||'📁')+'</div>')+'<div><div class="item-name">'+esc(cat.name)+'</div><div style="font-size:0.75rem;color:var(--text-light)">'+pc+' Produkte'+(cat.hasSubcategories?' · '+((cat.subcategories||[]).length)+' Unterkategorien':'')+'</div></div></div><div class="item-actions"><button onclick="moveCategory(\''+cat.id+'\',-1)" title="Nach oben"'+(isFirst?' disabled':'')+'>▲</button><button onclick="moveCategory(\''+cat.id+'\',1)" title="Nach unten"'+(isLast?' disabled':'')+'>▼</button><button onclick="openEditCat(\''+cat.id+'\')" title="Bearbeiten">✏️</button><button class="del" onclick="deleteCategory(\''+cat.id+'\')" title="Löschen">🗑</button></div></div>'+subcatsHtml+'</li>';
   }).join('');
 }
