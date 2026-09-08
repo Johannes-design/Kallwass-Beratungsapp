@@ -758,6 +758,12 @@ window.addEventListener('offline',updateOnlineState);
  */
 
 let precacheLaeuft = false;
+/* Hat der Nutzer den Lauf selbst angestoßen? Nur dann darf sich das Ergebnis
+   melden. Der Hintergrundlauf beim Öffnen der App schlägt für jedes Bild fehl,
+   das noch beim abgeschalteten Firebase liegt – und meldete dann mitten im
+   Gespräch "Kein Bild konnte gespeichert werden", obwohl niemand danach
+   gefragt hatte und nichts kaputt ist. */
+let precacheSichtbar = false;
 
 function swSenden(msg) {
   const c = navigator.serviceWorker && navigator.serviceWorker.controller;
@@ -800,6 +806,7 @@ function bilderOfflineSpeichern(sichtbar) {
     return;
   }
   precacheLaeuft = true;
+  precacheSichtbar = !!sichtbar;
   if (sichtbar) cacheStatusZeigen('Bilder werden gespeichert…', false);
 }
 
@@ -818,10 +825,16 @@ if ('serviceWorker' in navigator) {
     const m = ev.data || {};
 
     if (m.type === 'PRECACHE_PROGRESS') {
-      cacheStatusZeigen('Bilder werden gespeichert: ' + m.done + ' / ' + m.total, false);
+      if (precacheSichtbar) cacheStatusZeigen('Bilder werden gespeichert: ' + m.done + ' / ' + m.total, false);
 
     } else if (m.type === 'PRECACHE_DONE') {
       precacheLaeuft = false;
+      if (!precacheSichtbar) {
+        // Hintergrundlauf – still bleiben, nur fürs Protokoll.
+        console.log('Bilder offline gespeichert:', m.ok + ' von ' + m.total +
+                    (m.failed ? ' (' + m.failed + ' nicht erreichbar)' : ''));
+        return;
+      }
       if (m.alreadyComplete) {
         cacheStatusZeigen('Alle Bilder sind bereits offline verfügbar', true);
       } else if (m.failed && !m.ok) {
