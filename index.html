@@ -402,7 +402,7 @@ footer a{color:var(--gold-dark);text-decoration:none}footer a:hover{text-decorat
         <div class="admin-section">
           <h3>Neue Kategorie</h3>
           <div style="display:grid;gap:1rem;grid-template-columns:1fr 1fr">
-            <div class="form-group" style="margin:0"><label>Name</label><input type="text" id="catName" placeholder="z.B. Särge"></div>
+            <div class="form-group" style="margin:0"><label>Name</label><input type="text" id="catName" placeholder="z.B. Särge – mehrere mit Komma trennen"></div>
             <div class="form-group" style="margin:0"><label>Beschreibung</label><input type="text" id="catDesc" placeholder="Kurze Beschreibung"></div>
           </div>
           <div class="form-group" style="margin-top:1rem"><label>Symbol (Emoji)</label><input type="text" id="catIcon" placeholder="⚱️" maxlength="4" style="max-width:80px"></div>
@@ -1334,16 +1334,31 @@ async function bulkDelete(){
 }
 
 async function addCategory(){
-  const name=document.getElementById('catName').value.trim(),desc=document.getElementById('catDesc').value.trim();
+  // Mehrere auf einmal: durch Komma oder Semikolon getrennt eingeben.
+  // Beschreibung, Symbol und Bild gelten dann für alle – das lässt sich
+  // hinterher je Kategorie einzeln ändern.
+  const namen=document.getElementById('catName').value.split(/[,;\n]/).map(s=>s.trim()).filter(Boolean);
+  const desc=document.getElementById('catDesc').value.trim();
   const icon=document.getElementById('catIcon').value.trim(),hasSub=document.getElementById('catHasSubcats').checked;
   const fi=document.getElementById('catImage');
-  if(!name)return toast('Bitte Kategorienamen eingeben','error');
+  if(!namen.length)return toast('Bitte Kategorienamen eingeben','error');
+
+  const schon=namen.filter(n=>categories.some(c=>(c.name||'').toLowerCase()===n.toLowerCase()));
+  const neu=namen.filter(n=>schon.indexOf(n)===-1);
+  if(!neu.length)return toast(schon.length===1?'Kategorie existiert bereits':'Alle existieren bereits','error');
+
   try{
     let imageUrl='';
     if(fi.files[0]){toast('Bild wird hochgeladen…');imageUrl=await uploadImage(fi.files[0],'categories')}
-    await db.collection('categories').add({name,description:desc,icon:icon||'📁',imageUrl,hasSubcategories:hasSub,subcategories:[],order:categories.length,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    let pos=categories.length;
+    for(const name of neu){
+      await db.collection('categories').add({name,description:desc,icon:icon||'📁',imageUrl,
+        hasSubcategories:hasSub,subcategories:[],order:pos++,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    }
     document.getElementById('catName').value='';document.getElementById('catDesc').value='';document.getElementById('catIcon').value='';document.getElementById('catHasSubcats').checked=false;fi.value='';document.getElementById('catPreview').style.display='none';
-    toast('Kategorie hinzugefügt!','success');
+    toast(neu.length===1?'Kategorie hinzugefügt!':(neu.length+' Kategorien hinzugefügt!')+
+      (schon.length?' ('+schon.length+' gab es schon)':''),'success');
   }catch(e){
     fehlerMelden('Kategorie konnte nicht angelegt werden',e);
   }
