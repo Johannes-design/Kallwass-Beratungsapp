@@ -12,7 +12,7 @@
  *    der Nutzer entscheidet, wann geladen wird (nicht mitten im Trauergespräch).
  */
 
-const VERSION = 'v2.0.0';
+const VERSION = 'v2.1.0';
 const CACHE_SHELL  = 'bk-shell-'  + VERSION;
 const CACHE_VENDOR = 'bk-vendor-' + VERSION;   // Firebase-SDKs, Google Fonts
 const CACHE_IMAGES = 'bk-images';              // bewusst OHNE Version: Bilder überleben App-Updates
@@ -23,7 +23,21 @@ const SHELL_ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  // Firebase-SDKs und Schriften liegen seit v2.1 lokal. Vorher kamen sie von
+  // gstatic.com bzw. fonts.googleapis.com – und weil der Service Worker
+  // Antworten fremder Server nicht pruefen kann, landeten sie in keinem Cache.
+  // Ohne Netz fehlte damit das Firebase-SDK und die App startete gar nicht.
+  './vendor/firebase-app-compat.js',
+  './vendor/firebase-auth-compat.js',
+  './vendor/firebase-firestore-compat.js',
+  './vendor/fonts/schriften.css',
+  './vendor/fonts/v19_pe0TMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp7t1R-s.woff2',
+  './vendor/fonts/v19_pe0TMImSLYBIv1o4X1M8ce2xCx3yop4tQpF_MeTm0lfGWVpNn64CL7U8upHZIbMV51Q42ptCp7t7R-tCKQ.woff2',
+  './vendor/fonts/v21_co3ZmX5slCNuHLi8bLeY9MK7whWMhyjYrEtGmSq17w.woff2',
+  './vendor/fonts/v21_co3ZmX5slCNuHLi8bLeY9MK7whWMhyjYrEtImSo.woff2',
+  './vendor/fonts/v21_co3bmX5slCNuHLi8bLeY9MK7whWMhyjYp3tKgS4.woff2',
+  './vendor/fonts/v21_co3bmX5slCNuHLi8bLeY9MK7whWMhyjYqXtK.woff2'
 ];
 
 /* Hosts, deren Antworten NIE in einen Cache gehören (Live-Daten, Auth-Tokens) */
