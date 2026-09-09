@@ -1965,11 +1965,19 @@ function stapelDrop(ev){
 function unterkategorieZuOrdner(ordner){
   if(!ordner)return null;
   const gesucht=normVarianten(ordner);
+  // Zuerst die Unterkategorien – sie sind genauer als der Kategoriename.
   for(const kat of categories){
     for(const sub of (kat.subcategories||[])){
       for(const v of normVarianten(sub)){
         if(gesucht.has(v))return {catId:kat.id,katName:kat.name,subcat:sub};
       }
+    }
+  }
+  // Sonst der Kategoriename selbst. Nötig für Kategorien ohne Unterkategorien
+  // wie Seebestattung – ein Ordner "Seebestattung" landet dann direkt dort.
+  for(const kat of categories){
+    for(const v of normVarianten(kat.name)){
+      if(gesucht.has(v))return {catId:kat.id,katName:kat.name,subcat:''};
     }
   }
   return null;
