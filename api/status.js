@@ -28,9 +28,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const seite = await list({ limit: 1, ...auth });
+    // Vollstaendig durchzaehlen statt "1+" zu melden – beim Pruefen nach einem
+    // Stapel-Upload ist die genaue Zahl der Unterschied zwischen "alles drin"
+    // und "hochgeladen, aber keinem Produkt zugeordnet".
+    let cursor, gesamt = 0, seiten = 0;
+    do {
+      const seite = await list({ limit: 1000, cursor, ...auth });
+      gesamt += seite.blobs.length;
+      cursor = seite.hasMore ? seite.cursor : undefined;
+      seiten++;
+    } while (cursor && seiten < 20);
     status.blobLesbar = true;
-    status.anzahlBilder = seite.blobs.length + (seite.hasMore ? '+' : '');
+    status.anzahlBilder = gesamt;
     status.hinweis = 'Blob-Speicher ist verbunden und erreichbar.';
   } catch (e) {
     status.hinweis = 'Zugangsdaten vorhanden, aber der Zugriff schlug fehl: ' + e.message;
