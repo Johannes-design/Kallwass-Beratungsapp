@@ -1,15 +1,33 @@
 /* GET /api/status
  *
  * Selbstauskunft: Ist der Blob-Speicher angeschlossen und beschreibbar?
- * Gedacht zum Prüfen nach einem Deployment, ohne dass sich jemand anmelden muss.
+ *
+ * Ohne Anmeldung nur Ja/Nein (blobLesbar + hinweis). Variablennamen, Bildanzahl
+ * und der Schreibtest (?schreibtest=1) nur für Admins: dazu per POST mit
+ * { idToken } im Body aufrufen. Sonst könnte jeder Besucher Dateien im Store
+ * anlegen und Einblick in die Einrichtung bekommen.
  *
  * Gibt bewusst nur Namen und Ja/Nein zurück – niemals Tokens oder Teile davon.
  */
 
 import { list, put, del } from '@vercel/blob';
 import { blobAuth, blobEnvNamen, blobQuelle } from './_blob-auth.js';
+import { verifyAdmin } from './_admin-auth.js';
 
 export default async function handler(req, res) {
+  let istAdmin = false;
+  if (req.method === 'POST') {
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+      await verifyAdmin(body.idToken);
+      istAdmin = true;
+    } catch (e) {
+      return res.status(403).json({ error: e.message });
+    }
+  }
+  const antwort = (status) => res.status(200).json(istAdmin ? status
+    : { blobLesbar: status.blobLesbar, hinweis: status.blobLesbar ? status.hinweis : 'Blob-Speicher nicht erreichbar.' });
+
   const status = {
     gefundeneVariablen: blobEnvNamen(),
     verfahren: null,
@@ -24,7 +42,7 @@ export default async function handler(req, res) {
     status.verfahren = blobQuelle();
   } catch (e) {
     status.hinweis = e.message;
-    return res.status(200).json(status);
+    return antwort(status);
   }
 
   try {
@@ -43,13 +61,13 @@ export default async function handler(req, res) {
     status.hinweis = 'Blob-Speicher ist verbunden und erreichbar.';
   } catch (e) {
     status.hinweis = 'Zugangsdaten vorhanden, aber der Zugriff schlug fehl: ' + e.message;
-    return res.status(200).json(status);
+    return antwort(status);
   }
 
   /* Schreibtest nur auf ausdrückliche Anforderung (?schreibtest=1).
      Legt eine winzige Datei an, ruft sie öffentlich ab und löscht sie wieder.
-     Damit ist der komplette Upload-Weg belegt, ohne dass sich jemand anmelden muss. */
-  if (req.query && req.query.schreibtest === '1') {
+     Damit ist der komplette Upload-Weg belegt. Nur für Admins. */
+  if (istAdmin && req.query && req.query.schreibtest === '1') {
     status.schreibtest = { geschrieben: false, oeffentlichLesbar: false, aufgeraeumt: false };
     let url = null;
     try {
@@ -76,5 +94,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json(status);
+  return antwort(status);
 }

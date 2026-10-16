@@ -21,29 +21,11 @@
 
 import { put } from '@vercel/blob';
 import { blobAuth } from './_blob-auth.js';
+import { verifyAdmin } from './_admin-auth.js';
 
-const FIREBASE_API_KEY = 'AIzaSyDzxxj-kK4eo2RgW-ZQt26cJzHGRs75WbQ';
 const MAX_BYTES = 4 * 1024 * 1024;
 const ERLAUBTE_TYPEN = ['image/webp', 'image/jpeg', 'image/png'];
 
-async function verifyFirebaseToken(idToken) {
-  if (!idToken || typeof idToken !== 'string') {
-    throw new Error('Nicht angemeldet.');
-  }
-  const res = await fetch(
-    'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken })
-    }
-  );
-  if (!res.ok) throw new Error('Anmeldung abgelaufen – bitte neu anmelden.');
-  const data = await res.json();
-  const user = data.users && data.users[0];
-  if (!user || !user.localId) throw new Error('Anmeldung ungültig.');
-  return user.email || user.localId;
-}
 
 /* Dateinamen entschärfen: nur Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich. */
 function sauberer_name(name) {
@@ -68,25 +50,38 @@ const PRIVATE_ZIELE = [
   /^172\.(1[6-9]|2\d|3[01])\./, /^\[?::1\]?$/, /\.local$/i, /^metadata\./i
 ];
 
-async function vonAdresseHolen(quelle) {
+function adressePruefen(adresse) {
   let u;
-  try { u = new URL(quelle); } catch (e) { throw new Error('Ungültige Adresse.'); }
+  try { u = new URL(adresse); } catch (e) { throw new Error('Ungültige Adresse.'); }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') {
     throw new Error('Nur http und https erlaubt.');
   }
   if (PRIVATE_ZIELE.some(r => r.test(u.hostname))) {
     throw new Error('Adresse zeigt ins lokale Netz – abgelehnt.');
   }
+  return u;
+}
+
+async function vonAdresseHolen(quelle) {
+  let u = adressePruefen(quelle);
 
   const abbruch = new AbortController();
   const uhr = setTimeout(() => abbruch.abort(), 30000);
   let res;
   try {
-    res = await fetch(u.href, {
-      redirect: 'follow',
-      signal: abbruch.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (Beratungsapp Bildimport)' }
-    });
+    // Weiterleitungen selbst verfolgen, damit jedes Ziel dieselbe Prüfung
+    // durchläuft – sonst könnte eine Weiterleitung ins lokale Netz führen.
+    for (let sprung = 0; ; sprung++) {
+      res = await fetch(u.href, {
+        redirect: 'manual',
+        signal: abbruch.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Beratungsapp Bildimport)' }
+      });
+      const ziel = res.status >= 300 && res.status < 400 && res.headers.get('location');
+      if (!ziel) break;
+      if (sprung >= 5) throw new Error('Zu viele Weiterleitungen.');
+      u = adressePruefen(new URL(ziel, u).href);
+    }
   } finally {
     clearTimeout(uhr);
   }
@@ -113,7 +108,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { idToken, filename, contentType, data, quelle } = body;
 
-    const email = await verifyFirebaseToken(idToken);
+    const email = await verifyAdmin(idToken);
 
     // Variante 1: Bild liegt an einer Adresse und wird vom Server geholt.
     if (quelle) {

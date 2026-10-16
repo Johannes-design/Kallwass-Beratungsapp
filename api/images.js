@@ -12,24 +12,9 @@
 
 import { list } from '@vercel/blob';
 import { blobAuth } from './_blob-auth.js';
+import { verifyAdmin } from './_admin-auth.js';
 
-const FIREBASE_API_KEY = 'AIzaSyDzxxj-kK4eo2RgW-ZQt26cJzHGRs75WbQ';
 
-async function verifyFirebaseToken(idToken) {
-  if (!idToken || typeof idToken !== 'string') throw new Error('Nicht angemeldet.');
-  const res = await fetch(
-    'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken })
-    }
-  );
-  if (!res.ok) throw new Error('Anmeldung abgelaufen – bitte neu anmelden.');
-  const data = await res.json();
-  if (!data.users || !data.users[0]) throw new Error('Anmeldung ungültig.');
-  return true;
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -39,7 +24,7 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    await verifyFirebaseToken(body.idToken);
+    await verifyAdmin(body.idToken);
 
     const bilder = [];
     let cursor = undefined;
