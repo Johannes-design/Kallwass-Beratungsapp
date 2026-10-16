@@ -234,6 +234,10 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem}
 .zuordnung-noimg{color:var(--text-light);text-align:center;font-size:0.8rem;line-height:1.5}
 .zuordnung-name{font-weight:600;font-size:0.9rem;line-height:1.3}
 .zuordnung-sub{font-size:0.75rem;color:var(--text-light);margin-top:2px}
+.doppelt-titel{margin:1.5rem 0 0.75rem;font-size:1rem}
+.doppelt-gruppe{border-radius:12px;padding:0.9rem;margin-bottom:1rem;background:#fff}
+.doppelt-gruppe.sicher{border:2px solid #c0392b}
+.doppelt-gruppe.unsicher{border:2px dashed var(--gold)}
 .picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:center;justify-content:center;padding:1.5rem}
 .picker-overlay.active{display:flex}
 .picker-panel{background:var(--cream);border-radius:16px;max-width:900px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
@@ -395,6 +399,7 @@ footer a{color:var(--gold-dark);text-decoration:none}footer a:hover{text-decorat
         <button onclick="switchAdminTab('stapel',this)">📤 Stapel-Upload</button>
         <button onclick="switchAdminTab('aufraeumen',this)">🧹 Namen aufräumen</button>
         <button onclick="switchAdminTab('zuordnung',this)">🔗 Zuordnung</button>
+        <button onclick="switchAdminTab('doppelte',this)">🔍 Doppelte</button>
         <button onclick="switchAdminTab('bulk',this)">Bulk-Aktionen</button>
         <button onclick="switchAdminTab('account',this)">Konto</button>
       </div>
@@ -508,6 +513,17 @@ footer a{color:var(--gold-dark);text-decoration:none}footer a:hover{text-decorat
             <div id="zuordnungInfo" style="font-size:0.82rem;color:var(--text-light);padding-bottom:0.6rem"></div>
           </div>
           <div class="zuordnung-grid" id="zuordnungGrid"></div>
+        </div>
+      </div>
+      <div id="tab-doppelte" class="admin-tab-content">
+        <div class="admin-section">
+          <h3>Doppelte Bilder</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">Vergleicht die Bilder selbst – nicht die Namen. Gefunden werden auch Kopien, die verkleinert oder neu gespeichert wurden. <strong>Doppelt</strong> heißt: gleiches Foto. <strong>Sehr ähnlich</strong> heißt: bitte selbst ansehen – oft sind das Varianten (andere Farbe, anderer Ring). Ist es keine Doppelung, auf „Kein Duplikat“ tippen, dann taucht das Paar nicht mehr auf.</p>
+          <div class="zuordnung-toolbar">
+            <button class="btn btn-gold btn-sm" id="doppelteBtn" onclick="doppelteSuchen()">Jetzt prüfen</button>
+            <div id="doppelteInfo" style="font-size:0.82rem;color:var(--text-light);padding-bottom:0.3rem"></div>
+          </div>
+          <div id="doppelteListe"></div>
         </div>
       </div>
       <div id="tab-bulk" class="admin-tab-content">
@@ -1571,6 +1587,156 @@ function renderZuordnung(){
       '</div>';
   }).join('');
 }
+/* ───── Doppelte Bilder ─────
+   Jedes Bild wird auf ein 24×24-Farbraster verkleinert. Zwei Bilder gelten als
+   gleich, wenn sich selbst die stärksten 1 % der Rasterfelder kaum unterscheiden
+   (p99). Der Durchschnitt allein reicht nicht: Varianten wie dieselbe Urne mit
+   anderem Ring oder dieselbe Decke mit anderem Motiv unterscheiden sich nur in
+   wenigen Feldern – genau die fängt p99 ab.
+   Am echten Katalog gemessen (Okt. 2026): gleiche Fotos ≤ 1,3; dasselbe Bild neu
+   gespeichert (300–1500 px, PNG/JPEG) ≤ 3,7; ähnlichste echte Varianten ab 14. */
+const RASTER=24, DOPPELT_GRENZE=8, AEHNLICH_GRENZE=12;
+const _rasterCache=new Map();
+let _doppelteErgebnis=null;
+
+async function bildRaster(quelle){
+  const key=typeof quelle==='string'?quelle:null;
+  if(key&&_rasterCache.has(key))return _rasterCache.get(key);
+  const blob=typeof quelle==='string'?await fetch(quelle).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob()}):quelle;
+  const bm=await createImageBitmap(blob);
+  // Erst auf 8-fache Rastergröße, dann je 8×8 Pixel mitteln. Direkt auf 24×24
+  // zu verkleinern hängt sonst von der Ausgangsgröße ab – dasselbe Foto in
+  // 500 und 600 px würde als verschieden gelten. Weißer Grund, damit freigestellte
+  // Urnen (transparent) und dieselben als JPEG (weiß) gleich aussehen.
+  const G=RASTER*8;
+  const c=document.createElement('canvas');c.width=c.height=G;
+  const cx=c.getContext('2d',{willReadFrequently:true});
+  cx.imageSmoothingQuality='high';
+  cx.fillStyle='#fff';cx.fillRect(0,0,G,G);
+  cx.drawImage(bm,0,0,G,G);
+  const d=cx.getImageData(0,0,G,G).data;
+  const px=new Uint8ClampedArray(RASTER*RASTER*4);
+  for(let y=0;y<RASTER;y++)for(let x=0;x<RASTER;x++){
+    let r=0,g=0,b=0;
+    for(let yy=0;yy<8;yy++)for(let xx=0;xx<8;xx++){const i=((y*8+yy)*G+(x*8+xx))*4;r+=d[i];g+=d[i+1];b+=d[i+2]}
+    const o=(y*RASTER+x)*4;px[o]=r/64;px[o+1]=g/64;px[o+2]=b/64;px[o+3]=255;
+  }
+  const res={px,format:bm.width/bm.height};
+  if(bm.close)bm.close();
+  if(key)_rasterCache.set(key,res);
+  return res;
+}
+function rasterAbstand(a,b){
+  if(Math.abs(a.format-b.format)>0.06*Math.max(a.format,b.format))return 999;
+  const d=[];
+  for(let i=0;i<a.px.length;i+=4)d.push((Math.abs(a.px[i]-b.px[i])+Math.abs(a.px[i+1]-b.px[i+1])+Math.abs(a.px[i+2]-b.px[i+2]))/3);
+  d.sort((x,y)=>x-y);
+  return d[Math.floor(d.length*0.99)];
+}
+/* Raster aller Produktbilder – parallel in kleinen Portionen, aus dem Cache. */
+async function katalogRaster(fortschritt){
+  const mitBild=products.filter(p=>p.imageUrl);
+  const ergebnis=[];
+  for(let i=0;i<mitBild.length;i+=12){
+    const teil=mitBild.slice(i,i+12);
+    const r=await Promise.all(teil.map(p=>bildRaster(p.imageUrl).catch(()=>null)));
+    teil.forEach((p,j)=>{if(r[j])ergebnis.push({p,r:r[j]})});
+    if(fortschritt)fortschritt(Math.min(i+12,mitBild.length),mitBild.length);
+  }
+  return ergebnis;
+}
+function keinDuplikat(a,b){
+  return (a.keinDuplikat||[]).includes(b.id)||(b.keinDuplikat||[]).includes(a.id);
+}
+
+async function doppelteSuchen(){
+  const btn=document.getElementById('doppelteBtn'),info=document.getElementById('doppelteInfo');
+  if(btn)btn.disabled=true;
+  try{
+    const liste=await katalogRaster((n,g)=>{if(info)info.textContent='Bilder werden verglichen… '+n+' / '+g});
+    const paare=[];
+    for(let i=0;i<liste.length;i++)for(let j=i+1;j<liste.length;j++){
+      const a=liste[i].p,b=liste[j].p;
+      if(keinDuplikat(a,b))continue;
+      const d=a.imageUrl===b.imageUrl?0:rasterAbstand(liste[i].r,liste[j].r);
+      if(d<=AEHNLICH_GRENZE)paare.push({a:a.id,b:b.id,d});
+    }
+    _doppelteErgebnis={paare,geprueft:liste.length};
+    renderDoppelte();
+  }catch(e){
+    console.error(e);if(info)info.textContent='Prüfung fehlgeschlagen: '+e.message;
+  }finally{if(btn)btn.disabled=false}
+}
+
+/* Paare zu Gruppen zusammenfassen: A=B und B=C ergibt eine Gruppe A,B,C. */
+function paareGruppieren(paare){
+  const eltern=new Map();
+  const wurzel=x=>{while(eltern.get(x)!==x){eltern.set(x,eltern.get(eltern.get(x)));x=eltern.get(x)}return x};
+  paare.forEach(p=>{[p.a,p.b].forEach(id=>{if(!eltern.has(id))eltern.set(id,id)});eltern.set(wurzel(p.a),wurzel(p.b))});
+  const gruppen=new Map();
+  paare.forEach(p=>{const w=wurzel(p.a);if(!gruppen.has(w))gruppen.set(w,{ids:new Set(),max:0});const g=gruppen.get(w);g.ids.add(p.a);g.ids.add(p.b);g.max=Math.max(g.max,p.d)});
+  return [...gruppen.values()];
+}
+
+function renderDoppelte(){
+  const el=document.getElementById('doppelteListe'),info=document.getElementById('doppelteInfo');
+  if(!el||!_doppelteErgebnis)return;
+  const vorhanden=new Map(products.map(p=>[p.id,p]));
+  const paare=_doppelteErgebnis.paare.filter(p=>vorhanden.has(p.a)&&vorhanden.has(p.b)&&!keinDuplikat(vorhanden.get(p.a),vorhanden.get(p.b)));
+  const doppelt=paareGruppieren(paare.filter(p=>p.d<=DOPPELT_GRENZE));
+  const schonDoppelt=new Set(doppelt.flatMap(g=>[...g.ids]));
+  const aehnlich=paareGruppieren(paare.filter(p=>p.d>DOPPELT_GRENZE&&!(schonDoppelt.has(p.a)&&schonDoppelt.has(p.b))));
+  if(info)info.textContent=_doppelteErgebnis.geprueft+' Bilder geprüft · '+doppelt.length+' doppelt · '+aehnlich.length+' sehr ähnlich';
+
+  const karte=p=>{
+    const cat=categories.find(c=>c.id===p.categoryId);
+    return '<div class="zuordnung-card">'+
+      '<div class="zuordnung-imgwrap"><img src="'+esc(p.imageUrl)+'" loading="lazy" alt="'+esc(p.name)+'"></div>'+
+      '<div class="zuordnung-meta"><div class="zuordnung-name">'+esc(p.name)+'</div>'+
+      '<div class="zuordnung-sub">'+(cat?esc(cat.name):'–')+(p.subcategory?' · '+esc(p.subcategory):'')+'</div></div>'+
+      '<div style="display:flex;gap:0.4rem"><button class="btn btn-outline btn-sm" onclick="openEditProd(\''+p.id+'\')">✏️ Bearbeiten</button>'+
+      '<button class="btn btn-outline btn-sm" onclick="doppeltLoeschen(\''+p.id+'\')">🗑 Löschen</button></div>'+
+      '</div>';
+  };
+  const block=(g,art)=>{
+    const ids=[...g.ids];
+    return '<div class="doppelt-gruppe '+art+'">'+
+      '<div class="zuordnung-grid">'+ids.map(id=>karte(vorhanden.get(id))).join('')+'</div>'+
+      '<button class="btn btn-sm btn-outline" style="margin-top:0.75rem" onclick="keinDuplikatMarkieren(\''+ids.join(',')+'\')">Kein Duplikat – ausblenden</button>'+
+      '</div>';
+  };
+  el.innerHTML=
+    (doppelt.length?'<h4 class="doppelt-titel">Doppelt ('+doppelt.length+')</h4>'+doppelt.map(g=>block(g,'sicher')).join(''):'')+
+    (aehnlich.length?'<h4 class="doppelt-titel">Sehr ähnlich – bitte ansehen ('+aehnlich.length+')</h4>'+aehnlich.map(g=>block(g,'unsicher')).join(''):'')+
+    (!doppelt.length&&!aehnlich.length?'<div class="empty-state"><div class="icon">✅</div><p>Keine doppelten Bilder gefunden.</p></div>':'');
+}
+
+async function doppeltLoeschen(id){
+  await deleteProduct(id);
+  // Die Produktliste aktualisiert sich über onSnapshot; kurz warten, dann neu zeichnen.
+  setTimeout(renderDoppelte,400);
+}
+async function keinDuplikatMarkieren(idListe){
+  const ids=idListe.split(',');
+  try{
+    const batch=db.batch();
+    ids.forEach(id=>batch.update(db.collection('products').doc(id),{
+      keinDuplikat:firebase.firestore.FieldValue.arrayUnion(...ids.filter(x=>x!==id))
+    }));
+    await batch.commit();
+    ids.forEach(id=>{const p=products.find(x=>x.id===id);if(p)p.keinDuplikat=[...new Set([...(p.keinDuplikat||[]),...ids.filter(x=>x!==id)])]});
+    renderDoppelte();toast('Ausgeblendet','success');
+  }catch(e){toast('Fehler: '+e.message,'error')}
+}
+
+/* Vor jedem Upload: Gibt es das Bild schon im Katalog? Liefert die Treffer. */
+async function schonVorhanden(datei){
+  let neu;
+  try{neu=await bildRaster(datei)}catch(e){return []}
+  const liste=await katalogRaster();
+  return liste.filter(x=>rasterAbstand(neu,x.r)<=DOPPELT_GRENZE).map(x=>x.p);
+}
+
 let _storageImgCache=null,_pickerProdId=null;
 async function loadStorageImages(force){
   if(_storageImgCache&&!force)return _storageImgCache;
@@ -1652,6 +1818,7 @@ function switchAdminTab(tab,btn){
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
   if(tab==='zuordnung')renderZuordnung();
   if(tab==='aufraeumen')aufraeumScan();
+  if(tab==='doppelte'&&!_doppelteErgebnis)doppelteSuchen();
 }
 function updateStats(){
   const el=document.getElementById('adminStats');if(!el)return;
@@ -1672,6 +1839,15 @@ const WEBP_QUALITAET=0.82;
 
 async function uploadImage(file,folder){
   if(!currentUser)throw new Error('Nicht angemeldet.');
+
+  if(folder==='products'){
+    const treffer=await schonVorhanden(file);
+    if(treffer.length){
+      const namen=treffer.slice(0,5).map(p=>{const c=categories.find(x=>x.id===p.categoryId);return '• '+p.name+' ('+(c?c.name:'–')+(p.subcategory?' / '+p.subcategory:'')+')'}).join('\n');
+      if(!confirm('Dieses Bild ist schon im Katalog:\n\n'+namen+(treffer.length>5?'\n…':'')+'\n\nTrotzdem hochladen?'))
+        throw new Error('Nicht hochgeladen – Bild ist schon vorhanden.');
+    }
+  }
 
   const {blob,typ}=await bildAufbereiten(file);
   const base64=await blobAlsBase64(blob);

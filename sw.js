@@ -12,7 +12,7 @@
  *    der Nutzer entscheidet, wann geladen wird (nicht mitten im Trauergespräch).
  */
 
-const VERSION = 'v2.1.0';
+const VERSION = 'v2.2.0';
 const CACHE_SHELL  = 'bk-shell-'  + VERSION;
 const CACHE_VENDOR = 'bk-vendor-' + VERSION;   // Firebase-SDKs, Google Fonts
 const CACHE_IMAGES = 'bk-images';              // bewusst OHNE Version: Bilder überleben App-Updates
