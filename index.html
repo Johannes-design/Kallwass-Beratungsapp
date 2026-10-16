@@ -235,6 +235,11 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem}
 .zuordnung-name{font-weight:600;font-size:0.9rem;line-height:1.3}
 .zuordnung-sub{font-size:0.75rem;color:var(--text-light);margin-top:2px}
 .doppelt-titel{margin:1.5rem 0 0.75rem;font-size:1rem}
+.frage-overlay{position:fixed;inset:0;z-index:20000;background:rgba(30,15,15,0.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.frage-box{background:var(--cream,#fff);border-radius:14px;padding:1.4rem 1.4rem 1.1rem;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,0.25)}
+.frage-box p{white-space:pre-line;line-height:1.5;margin:0 0 1.2rem;font-size:0.95rem}
+.frage-knoepfe{display:flex;gap:0.6rem;justify-content:flex-end;flex-wrap:wrap}
+.frage-knoepfe .btn{min-height:44px;min-width:110px}
 .doppelt-gruppe{border-radius:12px;padding:0.9rem;margin-bottom:1rem;background:#fff}
 .doppelt-gruppe.sicher{border:2px solid #c0392b}
 .doppelt-gruppe.unsicher{border:2px dashed var(--gold)}
@@ -828,8 +833,8 @@ function bilderOfflineSpeichern(sichtbar) {
   if (sichtbar) cacheStatusZeigen('Bilder werden gespeichert…', false);
 }
 
-function bilderCacheLeeren() {
-  if (!confirm('Alle offline gespeicherten Bilder löschen?\n\nDie App lädt sie beim nächsten Mal im WLAN neu.')) return;
+async function bilderCacheLeeren() {
+  if (!(await bestaetigen('Alle offline gespeicherten Bilder löschen?\n\nDie App lädt sie beim nächsten Mal im WLAN neu.',{ok:'Löschen',gefahr:true}))) return;
   if (!swSenden({ type: 'CLEAR_IMAGES' })) return toast('Offline-Speicher nicht bereit', 'error');
 }
 
@@ -866,7 +871,7 @@ if ('serviceWorker' in navigator) {
 
     } else if (m.type === 'IMAGE_STATUS') {
       const gesamt = alleBildUrls().length;
-      alert('Offline-Status\n\n' +
+      hinweis('Offline-Status\n\n' +
             'Bilder im Katalog: ' + gesamt + '\n' +
             'Davon offline gespeichert: ' + m.cached + '\n\n' +
             (m.cached >= gesamt
@@ -1316,7 +1321,7 @@ function updateBulkDeleteBtn(){
 async function bulkDelete(){
   const ids=Array.from(bulkPreviewState.delIds);
   if(!ids.length)return toast('Nichts zu löschen','error');
-  if(!confirm('Wirklich '+ids.length+' Produkte unwiderruflich löschen?'))return;
+  if(!(await bestaetigen('Wirklich '+ids.length+' Produkte unwiderruflich löschen?',{ok:'Löschen',gefahr:true})))return;
   const btn=document.getElementById('bulkDeleteBtn');
   btn.disabled=true;
   let done=0;
@@ -1380,7 +1385,7 @@ async function addCategory(){
   }
 }
 
-async function deleteCategory(id){if(!confirm('Kategorie wirklich löschen?'))return;await db.collection('categories').doc(id).delete();toast('Kategorie gelöscht')}
+async function deleteCategory(id){if(!(await bestaetigen('Kategorie wirklich löschen?',{ok:'Löschen',gefahr:true})))return;await db.collection('categories').doc(id).delete();toast('Kategorie gelöscht')}
 
 async function moveCategory(id,direction){
   const idx=categories.findIndex(c=>c.id===id);
@@ -1453,7 +1458,7 @@ async function addSubcategory(catId){
   }
 }
 async function removeSubcategory(catId,subName){
-  if(!confirm('"'+subName+'" entfernen?'))return;
+  if(!(await bestaetigen('"'+subName+'" entfernen?',{ok:'Entfernen',gefahr:true})))return;
   const cat=categories.find(c=>c.id===catId);
   const subs=(cat.subcategories||[]).filter(s=>s!==subName);
   await db.collection('categories').doc(catId).update({subcategories:subs});toast('Unterkategorie entfernt');
@@ -1497,7 +1502,7 @@ async function addProduct(){
     fehlerMelden('Produkt konnte nicht angelegt werden',e);
   }
 }
-async function deleteProduct(id){if(!confirm('Produkt wirklich löschen?'))return;await db.collection('products').doc(id).delete();toast('Produkt gelöscht')}
+async function deleteProduct(id){const p=products.find(x=>x.id===id);if(!(await bestaetigen('Produkt „'+(p?p.name:'')+'“ wirklich löschen?',{ok:'Löschen',gefahr:true})))return false;try{await db.collection('products').doc(id).delete()}catch(e){fehlerMelden('Löschen fehlgeschlagen',e);return false}toast('Produkt gelöscht');return true}
 
 var editingProdId=null;
 function openEditProd(id){
@@ -1805,7 +1810,7 @@ async function uploadFromPicker(input){
 }
 async function removeImageFromProd(){
   if(_pickerProdId==null)return;
-  if(!confirm('Bild von diesem Produkt entfernen? (Das Bild bleibt im Speicher und kann neu zugeordnet werden.)'))return;
+  if(!(await bestaetigen('Bild von diesem Produkt entfernen?\n\nDas Bild bleibt im Speicher und kann neu zugeordnet werden.',{ok:'Entfernen',gefahr:true})))return;
   try{await db.collection('products').doc(_pickerProdId).update({imageUrl:''});toast('Bild entfernt');closeImagePicker();}catch(e){toast('Fehler','error')}
 }
 function closeImagePicker(){document.getElementById('pickerModal').classList.remove('active');document.body.style.overflow='';_pickerProdId=null;}
@@ -1844,7 +1849,7 @@ async function uploadImage(file,folder){
     const treffer=await schonVorhanden(file);
     if(treffer.length){
       const namen=treffer.slice(0,5).map(p=>{const c=categories.find(x=>x.id===p.categoryId);return '• '+p.name+' ('+(c?c.name:'–')+(p.subcategory?' / '+p.subcategory:'')+')'}).join('\n');
-      if(!confirm('Dieses Bild ist schon im Katalog:\n\n'+namen+(treffer.length>5?'\n…':'')+'\n\nTrotzdem hochladen?'))
+      if(!(await bestaetigen('Dieses Bild ist schon im Katalog:\n\n'+namen+(treffer.length>5?'\n…':'')+'\n\nTrotzdem hochladen?',{ok:'Trotzdem hochladen',abbrechen:'Nicht hochladen'})))
         throw new Error('Nicht hochgeladen – Bild ist schon vorhanden.');
     }
   }
@@ -1911,6 +1916,27 @@ function blobAlsBase64(blob){
   });
 }
 function previewFile(input,id){const p=document.getElementById(id);if(input.files[0]){const r=new FileReader();r.onload=e=>{p.src=e.target.result;p.style.display='block'};r.readAsDataURL(input.files[0])}else p.style.display='none'}
+/* Eigene Rückfrage statt confirm()/alert(): Eingebettete Browser (u. a. in
+   Apps) unterdrücken native Dialoge – confirm() liefert dort sofort "Abbrechen",
+   und Löschen ging nicht. Außerdem auf dem iPad gut zu treffen. */
+function bestaetigen(text,{ok='OK',gefahr=false,abbrechen='Abbrechen'}={}){
+  return new Promise(res=>{
+    const o=document.createElement('div');o.className='frage-overlay';
+    o.innerHTML='<div class="frage-box" role="dialog" aria-modal="true"><p></p><div class="frage-knoepfe">'+
+      (abbrechen?'<button class="btn btn-outline btn-sm" data-a="0"></button>':'')+
+      '<button class="btn btn-sm '+(gefahr?'btn-danger':'btn-gold')+'" data-a="1"></button></div></div>';
+    o.querySelector('p').textContent=text;
+    o.querySelector('[data-a="1"]').textContent=ok;
+    if(abbrechen)o.querySelector('[data-a="0"]').textContent=abbrechen;
+    const zu=v=>{o.remove();document.removeEventListener('keydown',taste,true);res(v)};
+    const taste=e=>{if(e.key==='Escape'){e.stopPropagation();zu(false)}else if(e.key==='Enter'){e.preventDefault();zu(true)}};
+    o.addEventListener('click',e=>{if(e.target===o)return zu(false);const k=e.target.closest('[data-a]');if(k)zu(k.dataset.a==='1')});
+    document.addEventListener('keydown',taste,true);
+    document.body.appendChild(o);
+    o.querySelector('[data-a="1"]').focus();
+  });
+}
+function hinweis(text){return bestaetigen(text,{abbrechen:null})}
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;setTimeout(()=>t.classList.add('show'),10);setTimeout(()=>t.classList.remove('show'),3000)}
 function esc(str){const d=document.createElement('div');d.textContent=str||'';return d.innerHTML}
 
@@ -1940,7 +1966,7 @@ function fehlerMelden(was,e){
     grund='Keine Verbindung zum Server. Die Änderung wurde nicht gespeichert.';
   }
   toast(was+': '+grund,'error');
-  alert('⚠️ '+was+'\n\n'+grund+(code?'\n\n(Code: '+code+')':''));
+  hinweis('⚠️ '+was+'\n\n'+grund+(code?'\n\n(Code: '+code+')':''));
 }
 
 /* === NAMEN AUFRÄUMEN ===
@@ -2063,7 +2089,7 @@ async function aufraeumUebernehmen(){
   const weg=aufraeumListe.filter(e=>e.weg);
   const um=aufraeumListe.filter(e=>!e.weg&&e.neu.trim());
   if(!weg.length&&!um.length)return toast('Nichts zu tun','error');
-  if(!confirm(um.length+' Einträge umbenennen'+(weg.length?' und '+weg.length+' löschen':'')+'?'))return;
+  if(!(await bestaetigen(um.length+' Einträge umbenennen'+(weg.length?' und '+weg.length+' löschen':'')+'?',{ok:'Übernehmen'})))return;
 
   const btn=document.getElementById('aufraeumBtn');
   btn.disabled=true;
