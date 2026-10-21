@@ -140,6 +140,16 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .btn-del{border:1.5px solid #c0392b;background:#fff;color:#c0392b;font-weight:800;padding:.75rem 1rem;border-radius:var(--radius-sm);font-size:.9rem}
 .btn-del:hover{background:#c0392b;color:#fff}
 .hidden{display:none!important}
+.fld textarea{width:100%;padding:.6rem .7rem;border:1.5px solid var(--line-strong);border-radius:var(--radius-sm);font-family:inherit;font-size:.92rem;color:var(--text);background:var(--surface);resize:vertical}
+.fld textarea:focus{outline:none;border-color:var(--gold)}
+.ferr{background:#fdecea;color:#a3261b;border:1px solid #f3c4bf;border-radius:var(--radius-sm);padding:.5rem .7rem;font-size:.85rem;font-weight:700;margin-top:.2rem}
+.btn-cancel{border:1.5px solid var(--line-strong);background:#fff;color:var(--text-muted);font-weight:800;padding:.75rem 1rem;border-radius:var(--radius-sm);font-size:.9rem}
+.dbody{font-size:.95rem;line-height:1.55}
+.dbody .dl{font-size:.74rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:.7rem}
+.dbody .dv{font-weight:700;white-space:pre-wrap;word-break:break-word}
+.dbody .who2{display:flex;align-items:center;gap:.5rem;font-weight:800}
+.dbody .who2 .dot{width:14px;height:14px;border-radius:50%}
+#dFoot .btn-save,#dFoot .btn-del,#dFoot .btn-cancel{flex:1}
 
 /* status / empty */
 .conn{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--weinrot-dark);color:#fff;padding:.5rem 1rem;border-radius:999px;font-size:.78rem;font-weight:700;box-shadow:var(--shadow-lg);z-index:40;display:none}
@@ -223,13 +233,24 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
           <div class="fld"><label>Datum</label><input type="date" id="inDate"></div>
           <div class="fld"><label>Uhrzeit (optional)</label><input type="time" id="inTime"></div>
         </div>
-        <div class="fld"><label>Titel (optional)</label><input type="text" id="inTitle" maxlength="60" placeholder="z. B. Beisetzung Müller"></div>
+        <div class="fld"><label>Was ist der Termin? *</label><input type="text" id="inTitle" maxlength="80" placeholder="z. B. Beisetzung Müller, Zentralfriedhof"></div>
+        <div class="fld"><label>Details (optional)</label><textarea id="inNote" rows="3" maxlength="500" placeholder="z. B. Treffpunkt, Ansprechpartner, Mitbringen…"></textarea></div>
       </div>
+      <div class="ferr hidden" id="mErr"></div>
     </div>
     <div class="modal-foot">
       <button class="btn-del hidden" id="btnDel" onclick="delEntry()">Löschen</button>
       <button class="btn-save" id="btnSave" onclick="saveEntry()">Speichern</button>
     </div>
+  </div>
+</div>
+
+<!-- Eigenes Dialogfenster (alert/confirm werden im iFrame unterdrückt) -->
+<div class="ov" id="dlg">
+  <div class="modal">
+    <div class="modal-head"><h3 id="dTitle"></h3><button class="x" onclick="dlgClose(false)">×</button></div>
+    <div class="modal-body dbody" id="dBody"></div>
+    <div class="modal-foot" id="dFoot"></div>
   </div>
 </div>
 
@@ -256,6 +277,25 @@ const PERSONS=[
   {name:"Eberhard", color:"#795548"}
 ];
 const colorOf=n=>(PERSONS.find(p=>p.name===n)||{}).color||"#888";
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtD=s=>{if(!s)return'';const[y,m,d]=s.split('-');return `${d}.${m}.${y}`;};
+
+/* ===== Eigener Dialog (statt alert/confirm) ===== */
+let dlgResolve=null;
+function dlg(title,html,buttons){
+  document.getElementById('dTitle').textContent=title;
+  document.getElementById('dBody').innerHTML=html;
+  const f=document.getElementById('dFoot');f.innerHTML='';
+  buttons.forEach(b=>{const el=document.createElement('button');el.className=b.cls;el.textContent=b.label;el.onclick=()=>dlgClose(b.val);f.appendChild(el);});
+  document.getElementById('dlg').classList.add('show');
+  return new Promise(r=>{dlgResolve=r;});
+}
+function dlgClose(v){document.getElementById('dlg').classList.remove('show');if(dlgResolve){const r=dlgResolve;dlgResolve=null;r(v);}}
+const showMsg=(t,html)=>dlg(t,html,[{label:'OK',cls:'btn-save',val:true}]);
+const askConfirm=(t,html,ok)=>dlg(t,html,[{label:'Abbrechen',cls:'btn-cancel',val:false},{label:ok,cls:'btn-del',val:true}]);
+function showErr(msg){const e=document.getElementById('mErr');e.textContent=msg;e.classList.remove('hidden');}
+function clearErr(){document.getElementById('mErr').classList.add('hidden');}
+
 function txtColor(hex){const c=hex.replace('#','');const r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16);return (0.299*r+0.587*g+0.114*b)>150?'#2A2024':'#fff';}
 
 /* ===== State ===== */
@@ -367,12 +407,12 @@ function renderMonth(){
     urlaube.forEach(e=>{if(shown>=max)return;shown++;
       const isS=e.start===dISO||(i%7===0), isE=e.end===dISO;
       const bg=colorOf(e.person),fg=txtColor(bg);
-      chips+=`<div class="chip span ${isS?'s':''} ${isE?'e':''}" style="background:${bg};color:${fg}" onclick="openEntry('${e.id}')" title="${e.person} · Urlaub">${isS?e.person:'&nbsp;'}</div>`;
+      chips+=`<div class="chip span ${isS?'s':''} ${isE?'e':''}" style="background:${bg};color:${fg}" onclick="openEntry('${e.id}')" title="${esc(e.person)} · Urlaub ${fmtD(e.start)}–${fmtD(e.end)}">${isS?esc(e.person):'&nbsp;'}</div>`;
     });
     termine.forEach(e=>{if(shown>=max)return;shown++;
       const bg=colorOf(e.person),fg=txtColor(bg);
       const lbl=(e.time?e.time+' ':'')+(e.title||e.person);
-      chips+=`<div class="chip" style="background:${bg};color:${fg}" onclick="openEntry('${e.id}')" title="${e.person}${e.title?' · '+e.title:''}">${lbl}</div>`;
+      chips+=`<div class="chip" style="background:${bg};color:${fg}" onclick="openEntry('${e.id}')" title="${esc(e.person)}${e.title?' · '+esc(e.title):''}${e.note?' – '+esc(e.note):''}">${esc(lbl)}${e.note?' <span class="ci">📝</span>':''}</div>`;
     });
     const extra=dayE.length-shown;
     if(extra>0)chips+=`<div class="more">+${extra} mehr</div>`;
@@ -412,12 +452,12 @@ function renderYear(){
       const s0=Math.max(0,dayOfYear(s<`${y}-01-01`?`${y}-01-01`:s));
       const e0=Math.min(total-1,dayOfYear(en>`${y}-12-31`?`${y}-12-31`:en));
       const left=pct(s0), w=Math.max(pct(e0-s0+1),0.4);
-      bars+=`<div class="y-bar" style="left:${left}%;width:${w}%;background:${p.color}" onclick="openEntry('${e.id}')" title="${p.name} · Urlaub ${e.start}→${e.end}"></div>`;
+      bars+=`<div class="y-bar" style="left:${left}%;width:${w}%;background:${p.color}" onclick="openEntry('${e.id}')" title="${p.name} · Urlaub ${fmtD(e.start)}–${fmtD(e.end)}"></div>`;
     });
     mine.filter(e=>e.type==='termin').forEach(e=>{
       const dd=e.date||e.start;if(dd< `${y}-01-01`||dd>`${y}-12-31`)return;
       const left=pct(dayOfYear(dd)+0.5);
-      bars+=`<div class="y-pt" style="left:${left}%;background:${p.color}" onclick="openEntry('${e.id}')" title="${p.name}${e.title?' · '+e.title:''} (${dd}${e.time?' '+e.time:''})"></div>`;
+      bars+=`<div class="y-pt" style="left:${left}%;background:${p.color}" onclick="openEntry('${e.id}')" title="${p.name}${e.title?' · '+esc(e.title):''} (${fmtD(dd)}${e.time?' '+e.time:''})"></div>`;
     });
     if(showToday)bars+=`<div class="y-today" style="left:${pct(dayOfYear(tISO))}%"></div>`;
     rows+=`<div class="y-row"><div class="y-name"><span class="dot" style="background:${p.color}"></span>${p.name}</div><div style="position:relative"><div class="y-track">${bars}</div></div></div>`;
@@ -433,7 +473,7 @@ function renderLegend(){
 }
 
 /* ===== Modal ===== */
-function requireMe(){if(!me){alert('Bitte oben rechts zuerst deinen Namen wählen.');document.getElementById('whoSel').focus();return false;}return true;}
+function requireMe(){if(!me){showMsg('Name wählen','Bitte oben rechts bei <b>„Ich bin"</b> zuerst deinen Namen auswählen.').then(()=>document.getElementById('whoSel').focus());return false;}return true;}
 function openAdd(prefillISO){
   if(!requireMe())return;
   editId=null;modalType='urlaub';
@@ -445,21 +485,30 @@ function openAdd(prefillISO){
   document.getElementById('inDate').value=t;
   document.getElementById('inTime').value='';
   document.getElementById('inTitle').value='';
-  setType('urlaub');setOwner(me);openOv();
+  document.getElementById('inNote').value='';
+  clearErr();setType('urlaub');setOwner(me);openOv();
 }
 function openEntry(id){
   const e=entries.find(x=>x.id===id);if(!e)return;
   if(e.person!==me){
-    const info=e.type==='urlaub'?`Urlaub ${e.start} bis ${e.end}`:`Termin ${e.date||e.start}${e.time?' '+e.time:''}${e.title?' · '+e.title:''}`;
-    alert(`${e.person}\n${info}\n\n(Nur ${e.person} kann diesen Eintrag ändern. Wechsle oben rechts den Namen.)`);
+    let h=`<div class="who2"><span class="dot" style="background:${colorOf(e.person)}"></span>${esc(e.person)}</div>`;
+    if(e.type==='urlaub'){
+      h+=`<div class="dl">Urlaub</div><div class="dv">${fmtD(e.start)} – ${fmtD(e.end)}</div>`;
+    }else{
+      h+=`<div class="dl">Termin</div><div class="dv">${esc(e.title||'(ohne Beschreibung)')}</div>`;
+      h+=`<div class="dl">Wann</div><div class="dv">${fmtD(e.date||e.start)}${e.time?', '+esc(e.time)+' Uhr':''}</div>`;
+      if(e.note)h+=`<div class="dl">Details</div><div class="dv">${esc(e.note)}</div>`;
+    }
+    h+=`<div class="dl" style="text-transform:none;letter-spacing:0;font-weight:600">Nur ${esc(e.person)} kann diesen Eintrag ändern.</div>`;
+    showMsg(e.type==='urlaub'?'Urlaub':'Termin',h);
     return;
   }
   editId=id;modalType=e.type;
   document.getElementById('mTitle').textContent='Eintrag bearbeiten';
   document.getElementById('btnDel').classList.remove('hidden');
   if(e.type==='urlaub'){document.getElementById('inStart').value=e.start;document.getElementById('inEnd').value=e.end;}
-  else{document.getElementById('inDate').value=e.date||e.start;document.getElementById('inTime').value=e.time||'';document.getElementById('inTitle').value=e.title||'';}
-  setType(e.type);setOwner(e.person);openOv();
+  else{document.getElementById('inDate').value=e.date||e.start;document.getElementById('inTime').value=e.time||'';document.getElementById('inTitle').value=e.title||'';document.getElementById('inNote').value=e.note||'';}
+  clearErr();setType(e.type);setOwner(e.person);openOv();
 }
 function setOwner(name){document.getElementById('mOwner').textContent=name;document.getElementById('mDot').style.background=colorOf(name);}
 function setType(t){modalType=t;
@@ -476,14 +525,17 @@ async function saveEntry(){
   let data;
   if(modalType==='urlaub'){
     let s=document.getElementById('inStart').value, e=document.getElementById('inEnd').value;
-    if(!s){alert('Bitte Von-Datum angeben.');return;}
+    if(!s){showErr('Bitte das Von-Datum angeben.');return;}
     if(!e)e=s; if(e<s){const t=s;s=e;e=t;}
-    data={type:'urlaub',person:me,start:s,end:e,date:null,time:'',title:''};
+    data={type:'urlaub',person:me,start:s,end:e,date:null,time:'',title:'',note:''};
   }else{
     const d=document.getElementById('inDate').value;
-    if(!d){alert('Bitte Datum angeben.');return;}
-    data={type:'termin',person:me,date:d,start:d,end:d,time:document.getElementById('inTime').value||'',title:document.getElementById('inTitle').value.trim()};
+    const title=document.getElementById('inTitle').value.trim();
+    if(!d){showErr('Bitte das Datum angeben.');return;}
+    if(!title){showErr('Bitte beschreiben, was der Termin ist.');document.getElementById('inTitle').focus();return;}
+    data={type:'termin',person:me,date:d,start:d,end:d,time:document.getElementById('inTime').value||'',title,note:document.getElementById('inNote').value.trim()};
   }
+  clearErr();
   if(!db){ // Offline-Vorschau
     if(editId){const idx=entries.findIndex(x=>x.id===editId);if(idx>-1)entries[idx]={...entries[idx],...data};}
     else entries.push({id:'local_'+Date.now(),...data});
@@ -493,17 +545,20 @@ async function saveEntry(){
     if(editId){await db.collection(COLL).doc(editId).update(data);}
     else{data.createdAt=firebase.firestore.FieldValue.serverTimestamp();await db.collection(COLL).add(data);}
     closeModal();
-  }catch(err){alert('Speichern fehlgeschlagen: '+err.message);}
+  }catch(err){showErr('Speichern fehlgeschlagen: '+err.message);}
 }
 async function delEntry(){
   if(!editId)return;
-  if(!confirm('Diesen Eintrag wirklich löschen?'))return;
-  if(!db){entries=entries.filter(x=>x.id!==editId);closeModal();renderAll();return;}
-  try{await db.collection(COLL).doc(editId).delete();closeModal();}
-  catch(err){alert('Löschen fehlgeschlagen: '+err.message);}
+  const id=editId;
+  const ok=await askConfirm('Eintrag löschen?','Diesen Eintrag wirklich löschen?','Löschen');
+  if(!ok)return;
+  if(!db){entries=entries.filter(x=>x.id!==id);closeModal();renderAll();return;}
+  try{await db.collection(COLL).doc(id).delete();closeModal();}
+  catch(err){showErr('Löschen fehlgeschlagen: '+err.message);}
 }
 document.getElementById('ov').addEventListener('click',e=>{if(e.target.id==='ov')closeModal();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.getElementById('dlg').addEventListener('click',e=>{if(e.target.id==='dlg')dlgClose(false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('dlg').classList.contains('show'))dlgClose(false);else closeModal();}});
 
 /* ===== Test-Hook (für Vorschau/Screenshots ohne Firestore) ===== */
 window.__planer={setEntries:a=>{entries=a;renderAll();},setMe:n=>{me=n;document.getElementById('whoSel').value=n;updateWhoDot();renderAll();},setCursor:d=>{cursor=d;renderAll();},setView:setView};
