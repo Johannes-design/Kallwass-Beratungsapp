@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5A1A22">
+<meta name="robots" content="noindex">
+<title>Ihre Auswahl – Bestattungshaus Kallwaß</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="vendor/fonts/schriften.css" rel="stylesheet">
+<!--
+  Kundenseite: Angehörige blättern durch den Katalog, merken sich mit dem Herz,
+  was ihnen gefällt, und schicken die Merkliste ab (→ /api/auswahl → Mail an post@).
+
+  Aufruf:  /auswahl.html?fuer=Erika%20Muster            Blumen (Standard)
+           /auswahl.html?kategorie=Urnen&fuer=…          andere Kategorie
+
+  Bewusst ohne Firebase-SDK: Die Seite liest den Katalog über die öffentliche
+  Firestore-REST-Schnittstelle. Auf dem Handy der Angehörigen lädt sie so in
+  einem Bruchteil der Zeit, und mit der Verwaltung hat sie nichts zu tun.
+-->
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bordeaux:#5A1A22;--bordeaux-light:#722F37;--bordeaux-dark:#3E0F15;
+  --gold:#C5A55A;--gold-light:#D4BA7A;--gold-dark:#A8893E;
+  --cream:#FAF7F2;--warm-white:#FEFCF9;--warm-gray:#E8E2DA;
+  --text-dark:#2A1A1D;--text-muted:#6B5A5E;--text-light:#9A8A8E;
+  --shadow-sm:0 1px 3px rgba(90,26,34,0.08);--shadow-md:0 4px 16px rgba(90,26,34,0.1);
+  --shadow-lg:0 8px 32px rgba(90,26,34,0.16);
+  --radius:12px;--radius-lg:20px;
+  --font-display:'Cormorant Garamond',Georgia,serif;
+  --font-body:'Nunito Sans',system-ui,sans-serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font-body);background:var(--cream);color:var(--text-dark);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased;padding-bottom:6rem}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+
+header{background:var(--bordeaux);color:var(--cream);text-align:center;padding:2.2rem 1rem 2rem}
+header .marke{font-family:var(--font-display);color:var(--gold);letter-spacing:.14em;text-transform:uppercase;font-size:.85rem}
+header h1{font-family:var(--font-display);font-weight:400;font-size:clamp(1.9rem,6vw,2.6rem);line-height:1.2;margin:.4rem 0}
+header .fuer{font-family:var(--font-display);font-style:italic;font-size:1.15rem;color:var(--gold-light)}
+header p.hinweis{max-width:34rem;margin:1rem auto 0;font-size:.95rem;color:rgba(250,247,242,.82)}
+
+.gruppen{position:sticky;top:0;z-index:20;background:rgba(250,247,242,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--warm-gray);display:flex;gap:.5rem;overflow-x:auto;padding:.8rem 1rem;scrollbar-width:none}
+.gruppen::-webkit-scrollbar{display:none}
+.gruppen button{flex:0 0 auto;padding:.45rem 1rem;border-radius:999px;border:1px solid var(--warm-gray);background:var(--warm-white);font-size:.9rem;color:var(--text-muted);white-space:nowrap}
+.gruppen button.aktiv{background:var(--bordeaux);border-color:var(--bordeaux);color:var(--cream)}
+.gruppen button .zahl{opacity:.6;margin-left:.3rem;font-size:.8rem}
+
+main{max-width:1100px;margin:0 auto;padding:1.2rem 1rem}
+.abschnitt h2{font-family:var(--font-display);font-weight:500;color:var(--bordeaux);font-size:1.6rem;margin:1.2rem 0 .8rem}
+.raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem}
+.karte{background:var(--warm-white);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);position:relative;transition:box-shadow .2s}
+.karte.gemerkt{box-shadow:0 0 0 2px var(--gold),var(--shadow-md)}
+.karte .bild{display:block;width:100%;aspect-ratio:1;background:var(--warm-gray)}
+.karte .bild img{width:100%;height:100%;object-fit:cover;display:block}
+.karte .name{padding:.6rem .75rem .75rem;font-size:.9rem;line-height:1.35;color:var(--text-dark)}
+.karte .preis{display:block;color:var(--text-muted);font-size:.82rem;margin-top:.15rem}
+.herz{position:absolute;top:.5rem;right:.5rem;width:2.6rem;height:2.6rem;border-radius:50%;background:rgba(254,252,249,.92);box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center}
+.herz svg{width:1.35rem;height:1.35rem;fill:none;stroke:var(--bordeaux);stroke-width:2}
+.gemerkt .herz,.herz.an{background:var(--bordeaux)}
+.gemerkt .herz svg,.herz.an svg{fill:var(--gold);stroke:var(--gold)}
+
+.leiste{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom));background:var(--bordeaux);color:var(--cream);display:flex;align-items:center;justify-content:space-between;gap:1rem;transform:translateY(110%);transition:transform .3s;box-shadow:0 -4px 20px rgba(0,0,0,.15)}
+.leiste.sichtbar{transform:none}
+.leiste .text{font-size:.95rem}
+.leiste .text b{font-family:var(--font-display);font-size:1.3rem;color:var(--gold);font-weight:600}
+.knopf{background:var(--gold);color:var(--bordeaux-dark);padding:.7rem 1.3rem;border-radius:999px;font-weight:700;font-size:.95rem;white-space:nowrap}
+.knopf:disabled{opacity:.5;cursor:default}
+.knopf.leer{background:transparent;border:1px solid var(--warm-gray);color:var(--text-muted)}
+
+.ebene{position:fixed;inset:0;z-index:50;background:rgba(42,26,29,.7);display:none;align-items:flex-end;justify-content:center}
+.ebene.offen{display:flex}
+.blatt{background:var(--cream);width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:1.4rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom))}
+@media(min-width:700px){.ebene{align-items:center}.blatt{border-radius:var(--radius-lg)}}
+.blatt-kopf{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.blatt h3{font-family:var(--font-display);font-weight:500;font-size:1.6rem;color:var(--bordeaux)}
+.zu{width:2.4rem;height:2.4rem;border-radius:50%;background:var(--warm-gray);font-size:1.1rem}
+.liste{list-style:none;margin-bottom:1.2rem}
+.liste li{display:flex;align-items:center;gap:.8rem;padding:.55rem 0;border-bottom:1px solid var(--warm-gray)}
+.liste img{width:56px;height:56px;border-radius:8px;object-fit:cover;flex:0 0 auto;background:var(--warm-gray)}
+.liste .wer{flex:1;font-size:.92rem;line-height:1.35}
+.liste .wer small{display:block;color:var(--text-light)}
+.liste .weg{color:var(--text-light);font-size:.85rem;padding:.4rem}
+label{display:block;font-size:.85rem;color:var(--text-muted);margin:.8rem 0 .3rem}
+input,textarea{width:100%;font:inherit;font-size:1rem;padding:.7rem .85rem;border:1px solid var(--warm-gray);border-radius:10px;background:var(--warm-white);color:var(--text-dark)}
+input:focus,textarea:focus{outline:2px solid var(--gold);border-color:transparent}
+textarea{min-height:5rem;resize:vertical}
+.falle{position:absolute;left:-9999px}
+.fehler{color:#a0302a;font-size:.9rem;margin-top:.8rem;display:none}
+.aktionen{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.2rem;flex-wrap:wrap}
+.danke{text-align:center;padding:1.5rem .5rem}
+.danke .zeichen{font-size:2.4rem;color:var(--gold)}
+.danke p{color:var(--text-muted);margin-top:.6rem}
+
+.gross{position:fixed;inset:0;z-index:60;background:rgba(20,10,12,.94);display:none;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+.gross.offen{display:flex}
+.gross img{max-width:100%;max-height:72vh;border-radius:var(--radius);object-fit:contain}
+.gross .unten{display:flex;align-items:center;gap:1rem;margin-top:1rem;color:var(--cream);max-width:640px;width:100%;justify-content:space-between}
+.gross .titel{font-family:var(--font-display);font-size:1.3rem}
+.gross .herz{position:static;flex:0 0 auto}
+.gross .zu{position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,.15);color:#fff}
+.gross .pfeil{position:absolute;top:45%;width:3rem;height:3rem;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:1.4rem}
+.gross .pfeil.l{left:.6rem}.gross .pfeil.r{right:.6rem}
+
+.status{text-align:center;color:var(--text-muted);padding:3rem 1rem}
+.loader{width:36px;height:36px;border:2px solid var(--warm-gray);border-top-color:var(--gold);border-radius:50%;animation:dreh .8s linear infinite;margin:0 auto 1rem}
+@keyframes dreh{to{transform:rotate(360deg)}}
+footer{text-align:center;color:var(--text-light);font-size:.82rem;padding:2rem 1rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marke">Bestattungshaus Kallwaß</div>
+  <h1 id="titel">Blumenauswahl</h1>
+  <div class="fuer" id="fuerZeile" hidden></div>
+  <p class="hinweis">Nehmen Sie sich Zeit. Tippen Sie auf das Herz bei allem, was Ihnen gefällt – am Ende schicken Sie uns Ihre Merkliste, und wir melden uns bei Ihnen.</p>
+</header>
+
+<nav class="gruppen" id="gruppen" aria-label="Arten"></nav>
+
+<main id="inhalt"><div class="status"><div class="loader"></div>Einen Moment …</div></main>
+
+<footer>Bestattungshaus Kallwaß · post@bestattungshaus-kallwass.de</footer>
+
+<div class="leiste" id="leiste">
+  <div class="text"><b id="anzahl">0</b> gemerkt</div>
+  <button class="knopf" onclick="merklisteOeffnen()">Merkliste ansehen</button>
+</div>
+
+<div class="ebene" id="merkliste" onclick="if(event.target===this)merklisteSchliessen()">
+  <div class="blatt" id="blatt"></div>
+</div>
+
+<div class="gross" id="gross">
+  <button class="zu" onclick="grossSchliessen()" aria-label="Schließen">✕</button>
+  <button class="pfeil l" onclick="blaettern(-1)" aria-label="Vorheriges">‹</button>
+  <button class="pfeil r" onclick="blaettern(1)" aria-label="Nächstes">›</button>
+  <img id="grossBild" alt="">
+  <div class="unten">
+    <div class="titel" id="grossTitel"></div>
+    <button class="herz" id="grossHerz" onclick="umschalten(grossId)" aria-label="Merken"></button>
+  </div>
+</div>
+
+<script>
+const API_KEY='AIzaSyDzxxj-kK4eo2RgW-ZQt26cJzHGRs75WbQ';
+const BASIS='https://firestore.googleapis.com/v1/projects/beratungsapp-bh-kallwass/databases/(default)/documents/';
+const POST='post@bestattungshaus-kallwass.de';
+const HERZ='<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.2 4.3 2.4.7-1.2 2.1-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>';
+
+const param=new URLSearchParams(location.search);
+const KATEGORIE=param.get('kategorie')||'Blumen';
+const FUER=(param.get('fuer')||'').trim().slice(0,160);
+const SPEICHER='auswahl:'+KATEGORIE+':'+FUER;
+
+let artikel=[],gruppen=[],aktiveGruppe='',grossId=null;
+let gemerkt=new Set(laden());
+
+function laden(){try{return JSON.parse(localStorage.getItem(SPEICHER))||[]}catch(e){return[]}}
+function sichern(){try{localStorage.setItem(SPEICHER,JSON.stringify([...gemerkt]))}catch(e){}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function feld(d,k){const f=d.fields&&d.fields[k];return f?(f.stringValue!=null?f.stringValue:f.arrayValue?(f.arrayValue.values||[]).map(v=>v.stringValue||(v.mapValue&&v.mapValue.fields.name&&v.mapValue.fields.name.stringValue)||''):''):''}
+
+async function alles(sammlung){
+  let docs=[],token='';
+  do{
+    const r=await fetch(BASIS+sammlung+'?pageSize=300&key='+API_KEY+(token?'&pageToken='+encodeURIComponent(token):''));
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();docs=docs.concat(j.documents||[]);token=j.nextPageToken||'';
+  }while(token);
+  return docs;
+}
+
+async function start(){
+  document.getElementById('titel').textContent=KATEGORIE==='Blumen'?'Blumenauswahl':KATEGORIE;
+  document.title=(KATEGORIE==='Blumen'?'Blumenauswahl':KATEGORIE)+' – Bestattungshaus Kallwaß';
+  if(FUER){const z=document.getElementById('fuerZeile');z.textContent='für '+FUER;z.hidden=false}
+  try{
+    const [kats,prods]=await Promise.all([alles('categories'),alles('products')]);
+    const kat=kats.find(d=>feld(d,'name')===KATEGORIE);
+    if(!kat)throw new Error('Kategorie fehlt');
+    const katId=kat.name.split('/').pop();
+    artikel=prods.filter(d=>feld(d,'categoryId')===katId&&feld(d,'imageUrl')).map(d=>({
+      id:d.name.split('/').pop(),name:feld(d,'name'),gruppe:feld(d,'subcategory')||'Weitere',
+      bild:feld(d,'imageUrl'),preis:feld(d,'price')
+    })).sort((a,b)=>a.name.localeCompare(b.name,'de'));
+    const reihenfolge=feld(kat,'subcategories')||[];
+    gruppen=[...new Set(artikel.map(a=>a.gruppe))].sort((a,b)=>{
+      const ia=reihenfolge.indexOf(a),ib=reihenfolge.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)});
+    // Gemerktes, das es nicht mehr gibt, still aussortieren
+    gemerkt=new Set([...gemerkt].filter(id=>artikel.some(a=>a.id===id)));sichern();
+    zeichneGruppen();zeichne();leisteAktualisieren();
+  }catch(e){
+    document.getElementById('inhalt').innerHTML='<div class="status">Die Auswahl konnte gerade nicht geladen werden.<br>Bitte versuchen Sie es in einem Moment noch einmal.</div>';
+  }
+}
+
+function zeichneGruppen(){
+  const nav=document.getElementById('gruppen');
+  if(gruppen.length<2){nav.style.display='none';return}
+  nav.innerHTML=['',...gruppen].map(g=>{
+    const n=g?artikel.filter(a=>a.gruppe===g).length:artikel.length;
+    return '<button class="'+(g===aktiveGruppe?'aktiv':'')+'" onclick="waehle(\''+esc(g).replace(/'/g,"\\'")+'\')">'+(g?esc(g):'Alle')+'<span class="zahl">'+n+'</span></button>'}).join('');
+}
+function waehle(g){aktiveGruppe=g;zeichneGruppen();zeichne();window.scrollTo({top:document.getElementById('gruppen').offsetTop,behavior:'smooth'})}
+
+function sichtbare(){return artikel.filter(a=>!aktiveGruppe||a.gruppe===aktiveGruppe)}
+function karte(a){
+  return '<div class="karte'+(gemerkt.has(a.id)?' gemerkt':'')+'" id="k_'+a.id+'">'+
+    '<button class="bild" onclick="grossOeffnen(\''+a.id+'\')" aria-label="'+esc(a.name)+' groß ansehen"><img src="'+esc(a.bild)+'" alt="" loading="lazy"></button>'+
+    '<button class="herz" onclick="umschalten(\''+a.id+'\')" aria-label="Merken">'+HERZ+'</button>'+
+    '<div class="name">'+esc(a.name)+(a.preis?'<span class="preis">'+esc(a.preis)+'</span>':'')+'</div></div>';
+}
+function zeichne(){
+  const ziel=document.getElementById('inhalt');
+  if(!artikel.length){ziel.innerHTML='<div class="status">Hier ist noch nichts hinterlegt.</div>';return}
+  const liste=aktiveGruppe?[aktiveGruppe]:gruppen;
+  ziel.innerHTML=liste.map(g=>'<section class="abschnitt">'+(gruppen.length>1?'<h2>'+esc(g)+'</h2>':'')+
+    '<div class="raster">'+artikel.filter(a=>a.gruppe===g).map(karte).join('')+'</div></section>').join('');
+}
+
+function umschalten(id){
+  if(gemerkt.has(id))gemerkt.delete(id);else gemerkt.add(id);
+  sichern();
+  const k=document.getElementById('k_'+id);if(k)k.classList.toggle('gemerkt',gemerkt.has(id));
+  if(grossId===id)grossHerz();
+  leisteAktualisieren();
+  if(document.getElementById('merkliste').classList.contains('offen'))zeichneMerkliste();
+}
+function leisteAktualisieren(){
+  document.getElementById('anzahl').textContent=gemerkt.size;
+  document.getElementById('leiste').classList.toggle('sichtbar',gemerkt.size>0);
+}
+
+/* --- Großansicht --- */
+function grossOeffnen(id){grossId=id;grossZeigen();document.getElementById('gross').classList.add('offen');document.body.style.overflow='hidden'}
+function grossSchliessen(){document.getElementById('gross').classList.remove('offen');document.body.style.overflow='';grossId=null}
+function grossZeigen(){
+  const a=artikel.find(x=>x.id===grossId);if(!a)return;
+  document.getElementById('grossBild').src=a.bild;
+  document.getElementById('grossTitel').textContent=a.name+(a.preis?' · '+a.preis:'');
+  grossHerz();
+}
+function grossHerz(){const h=document.getElementById('grossHerz');h.innerHTML=HERZ;h.classList.toggle('an',gemerkt.has(grossId))}
+function blaettern(r){const l=sichtbare();if(!l.length)return;let i=l.findIndex(a=>a.id===grossId);i=(i+r+l.length)%l.length;grossId=l[i].id;grossZeigen()}
+document.addEventListener('keydown',e=>{
+  if(!grossId)return;if(e.key==='Escape')grossSchliessen();if(e.key==='ArrowLeft')blaettern(-1);if(e.key==='ArrowRight')blaettern(1)});
+let wischX=null;
+document.getElementById('gross').addEventListener('touchstart',e=>{wischX=e.touches[0].clientX},{passive:true});
+document.getElementById('gross').addEventListener('touchend',e=>{if(wischX==null)return;const d=e.changedTouches[0].clientX-wischX;if(Math.abs(d)>50)blaettern(d<0?1:-1);wischX=null});
+
+/* --- Merkliste und Absenden --- */
+let entwurf={name:'',kontakt:'',fuer:FUER,anmerkung:''};
+function merklisteOeffnen(){zeichneMerkliste();document.getElementById('merkliste').classList.add('offen');document.body.style.overflow='hidden'}
+function merklisteSchliessen(){entwurfMerken();document.getElementById('merkliste').classList.remove('offen');document.body.style.overflow=''}
+function entwurfMerken(){['name','kontakt','fuer','anmerkung'].forEach(k=>{const f=document.getElementById('f_'+k);if(f)entwurf[k]=f.value})}
+function zeichneMerkliste(){
+  entwurfMerken();
+  const liste=artikel.filter(a=>gemerkt.has(a.id));
+  document.getElementById('blatt').innerHTML=
+    '<div class="blatt-kopf"><h3>Ihre Merkliste</h3><button class="zu" onclick="merklisteSchliessen()" aria-label="Schließen">✕</button></div>'+
+    (liste.length?'<ul class="liste">'+liste.map(a=>'<li><img src="'+esc(a.bild)+'" alt=""><div class="wer">'+esc(a.name)+'<small>'+esc(a.gruppe)+(a.preis?' · '+esc(a.preis):'')+'</small></div><button class="weg" onclick="umschalten(\''+a.id+'\')">Entfernen</button></li>').join('')+'</ul>'
+      :'<p style="color:var(--text-muted);margin-bottom:1rem">Noch nichts gemerkt. Tippen Sie auf das Herz bei einem Bild.</p>')+
+    '<form onsubmit="absenden(event)">'+
+      '<label for="f_name">Ihr Name *</label><input id="f_name" autocomplete="name" required value="'+esc(entwurf.name)+'">'+
+      '<label for="f_kontakt">Telefon oder E-Mail *</label><input id="f_kontakt" autocomplete="email" required value="'+esc(entwurf.kontakt)+'">'+
+      '<label for="f_fuer">Für (Name der/des Verstorbenen)</label><input id="f_fuer" value="'+esc(entwurf.fuer)+'">'+
+      '<label for="f_anmerkung">Anmerkung, Wünsche, Farben …</label><textarea id="f_anmerkung">'+esc(entwurf.anmerkung)+'</textarea>'+
+      '<input class="falle" id="f_website" tabindex="-1" autocomplete="off" aria-hidden="true">'+
+      '<div class="fehler" id="fehler"></div>'+
+      '<div class="aktionen"><button type="button" class="knopf leer" onclick="merklisteSchliessen()">Weiter ansehen</button>'+
+      '<button type="submit" class="knopf" id="senden"'+(liste.length?'':' disabled')+'>Auswahl senden</button></div>'+
+    '</form>';
+}
+
+function mailText(){
+  const liste=artikel.filter(a=>gemerkt.has(a.id));
+  return 'Guten Tag,\n\nhier ist unsere Auswahl'+(entwurf.fuer?' für '+entwurf.fuer:'')+':\n\n'+
+    liste.map((a,i)=>(i+1)+'. '+a.name+' ('+a.gruppe+')').join('\n')+
+    (entwurf.anmerkung?'\n\nAnmerkung:\n'+entwurf.anmerkung:'')+
+    '\n\n'+entwurf.name+'\n'+entwurf.kontakt;
+}
+
+async function absenden(e){
+  e.preventDefault();entwurfMerken();
+  const knopf=document.getElementById('senden'),fehler=document.getElementById('fehler');
+  knopf.disabled=true;knopf.textContent='Wird gesendet …';fehler.style.display='none';
+  try{
+    const r=await fetch('/api/auswahl',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ids:[...gemerkt],name:entwurf.name,kontakt:entwurf.kontakt,fuer:entwurf.fuer,anmerkung:entwurf.anmerkung,website:document.getElementById('f_website').value})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j.ok){gesendet();return}
+    if(r.status===400)throw Object.assign(new Error(j.error||'Bitte Eingaben prüfen.'),{eingabe:true});
+    throw new Error(j.error||'Versand fehlgeschlagen');
+  }catch(err){
+    knopf.disabled=false;knopf.textContent='Auswahl senden';
+    fehler.style.display='block';
+    if(err.eingabe){fehler.textContent=err.message;return}
+    // Ausweg, wenn der Server nicht verschicken kann: das eigene Mail-Programm
+    const link='mailto:'+POST+'?subject='+encodeURIComponent('Unsere Auswahl'+(entwurf.fuer?' für '+entwurf.fuer:''))+'&body='+encodeURIComponent(mailText());
+    fehler.innerHTML='Das Senden hat gerade nicht geklappt. Sie können uns die Auswahl auch über Ihr Mail-Programm schicken: <a href="'+esc(link)+'">E-Mail öffnen</a>';
+  }
+}
+function gesendet(){
+  gemerkt.clear();sichern();leisteAktualisieren();
+  document.querySelectorAll('.karte.gemerkt').forEach(k=>k.classList.remove('gemerkt'));
+  document.getElementById('blatt').innerHTML='<div class="danke"><div class="zeichen">✓</div><h3>Vielen Dank</h3>'+
+    '<p>Ihre Auswahl ist bei uns angekommen. Wir melden uns bei Ihnen.</p>'+
+    '<div class="aktionen" style="justify-content:center"><button class="knopf" onclick="merklisteSchliessen()">Schließen</button></div></div>';
+}
+
+start();
+</script>
+</body>
+</html>
