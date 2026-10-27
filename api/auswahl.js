@@ -18,7 +18,7 @@
  * stattdessen an, die Auswahl über das eigene Mail-Programm zu schicken.
  *
  * Body (JSON): { ids: string[], name, kontakt, fuer, anmerkung, schleifen, website }
- *   schleifen: { produktId: [{ text }] } – je Schleife ein Text, höchstens 4 je Artikel
+ *   schleifen: { produktId: [{ text }] } – je Schleife ein Text, höchstens 8 je Artikel
  *   website ist ein unsichtbares Lockfeld: Menschen lassen es leer, Spam-Bots nicht.
  */
 
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
   const schleifen = {};
   const roh = body.schleifen && typeof body.schleifen === 'object' ? body.schleifen : {};
   for (const id of ids) {
-    const liste = (Array.isArray(roh[id]) ? roh[id] : []).slice(0, 4)
+    const liste = (Array.isArray(roh[id]) ? roh[id] : []).slice(0, 8)
       .map(s => ({ text: band(s && s.text) }))
       .filter(s => s.text);
     if (liste.length) schleifen[id] = liste;

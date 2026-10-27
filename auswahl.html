@@ -304,7 +304,7 @@ document.getElementById('gross').addEventListener('touchend',e=>{if(wischX==null
    genau so bei uns an. Je Schleife ein Textfeld – wie viele Schleifen, gibt die Familie vor.
    Ob überhaupt eine Schleife dran soll, entscheidet die Familie selbst über den Knopf;
    vorher steht kein leeres Feld da, das wie eine Pflichtangabe wirkt. */
-const MAX_SCHLEIFEN=4;
+const MAX_SCHLEIFEN=8;   // große Gestecke haben bis zu 6 Schleifen, etwas Luft nach oben
 let schleifen={};
 try{schleifen=JSON.parse(localStorage.getItem(SPEICHER+':schleifen2'))||{}}catch(e){}
 function schleifenSichern(){try{localStorage.setItem(SPEICHER+':schleifen2',JSON.stringify(schleifen))}catch(e){}}
