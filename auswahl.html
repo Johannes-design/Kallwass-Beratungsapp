@@ -210,7 +210,9 @@ function zeichneGruppen(){
 function waehle(g){
   aktiveGruppe=g;zeichneGruppen();zeichne();
   const listenAnfang=document.querySelector('header').offsetHeight;
-  if(window.scrollY>listenAnfang)window.scrollTo({top:listenAnfang,behavior:'smooth'});
+  // Sofort springen statt sanft scrollen: Das sanfte Scrollen bricht ab, sobald die
+  // neue (kürzere) Liste und ihre Bilder das Seitenlayout verändern.
+  if(window.scrollY>listenAnfang)window.scrollTo(0,listenAnfang);
 }
 
 function sichtbare(){return artikel.filter(a=>!aktiveGruppe||a.gruppe===aktiveGruppe)}
