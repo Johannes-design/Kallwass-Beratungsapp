@@ -205,7 +205,13 @@ function zeichneGruppen(){
     const n=g?artikel.filter(a=>a.gruppe===g).length:artikel.length;
     return '<button class="'+(g===aktiveGruppe?'aktiv':'')+'" onclick="waehle(\''+esc(g).replace(/'/g,"\\'")+'\')">'+(g?esc(g):'Alle')+'<span class="zahl">'+n+'</span></button>'}).join('');
 }
-function waehle(g){aktiveGruppe=g;zeichneGruppen();zeichne();window.scrollTo({top:document.getElementById('gruppen').offsetTop,behavior:'smooth'})}
+/* Nach oben zum Anfang der Liste. Nicht offsetTop der Reiterleiste nehmen: Die klebt
+   oben fest, ihr offsetTop ist dann die aktuelle Scrollhöhe – und die Seite bliebe stehen. */
+function waehle(g){
+  aktiveGruppe=g;zeichneGruppen();zeichne();
+  const listenAnfang=document.querySelector('header').offsetHeight;
+  if(window.scrollY>listenAnfang)window.scrollTo({top:listenAnfang,behavior:'smooth'});
+}
 
 function sichtbare(){return artikel.filter(a=>!aktiveGruppe||a.gruppe===aktiveGruppe)}
 function karte(a){
