@@ -78,7 +78,18 @@ main{max-width:1100px;margin:0 auto;padding:1.2rem 1rem}
 .blatt h3{font-family:var(--font-display);font-weight:500;font-size:1.6rem;color:var(--bordeaux)}
 .zu{width:2.4rem;height:2.4rem;border-radius:50%;background:var(--warm-gray);font-size:1.1rem}
 .liste{list-style:none;margin-bottom:1.2rem}
-.liste li{display:flex;align-items:center;gap:.8rem;padding:.55rem 0;border-bottom:1px solid var(--warm-gray)}
+.liste li{padding:.7rem 0;border-bottom:1px solid var(--warm-gray)}
+.liste .zeile{display:flex;align-items:center;gap:.8rem}
+.schleifen-hinweis{font-size:.85rem;color:var(--text-muted);background:var(--warm-white);border-left:3px solid var(--gold);padding:.5rem .75rem;margin-bottom:.4rem}
+.schleifen{margin:.5rem 0 0 calc(56px + .8rem)}
+.schleife{background:var(--warm-white);border:1px solid var(--warm-gray);border-radius:10px;padding:.6rem .7rem;margin-bottom:.5rem}
+.schleife-kopf{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:700;color:var(--bordeaux)}
+.schleife-kopf button{font-size:.8rem;font-weight:400;color:var(--text-light);padding:.2rem .3rem}
+.baender{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.baender label{margin:.4rem 0 0;font-size:.78rem}
+.baender textarea{min-height:3.2rem;font-size:.95rem;padding:.5rem .6rem;margin-top:.25rem}
+.schleife-neu{font-size:.88rem;font-weight:700;color:var(--bordeaux);border:1px dashed var(--gold);border-radius:999px;padding:.4rem .9rem}
+@media(max-width:480px){.schleifen{margin-left:0}.baender{grid-template-columns:1fr}}
 .liste img{width:56px;height:56px;border-radius:8px;object-fit:cover;flex:0 0 auto;background:var(--warm-gray)}
 .liste .wer{flex:1;font-size:.92rem;line-height:1.35}
 .liste .wer small{display:block;color:var(--text-light)}
@@ -260,6 +271,41 @@ let wischX=null;
 document.getElementById('gross').addEventListener('touchstart',e=>{wischX=e.touches[0].clientX},{passive:true});
 document.getElementById('gross').addEventListener('touchend',e=>{if(wischX==null)return;const d=e.changedTouches[0].clientX-wischX;if(Math.abs(d)>50)blaettern(d<0?1:-1);wischX=null});
 
+/* --- Schleifen je Artikel ---
+   Angehörige tragen den Schleifentext selbst ein, so kommt die Schreibweise der Namen
+   genau so bei uns an. Je Schleife zwei Bänder: links der Spruch, rechts von wem.
+   Bei Gestecken, Kränzen, Herzen und Sargauflagen steht die erste Schleife schon da,
+   beim Urnenschmuck nur der Knopf – dort ist eine Schleife die Ausnahme. */
+const MIT_SCHLEIFE=['Blumengestecke','Blumenkränze','Blumenherzen','Sargauflagen'];
+const MAX_SCHLEIFEN=4;
+let schleifen={};
+try{schleifen=JSON.parse(localStorage.getItem(SPEICHER+':schleifen'))||{}}catch(e){}
+function schleifenSichern(){try{localStorage.setItem(SPEICHER+':schleifen',JSON.stringify(schleifen))}catch(e){}}
+function schleifenVon(a){
+  if(!schleifen[a.id])schleifen[a.id]=MIT_SCHLEIFE.indexOf(a.gruppe)>-1?[{links:'',rechts:''}]:[];
+  return schleifen[a.id];
+}
+function schleifeHinzu(id){entwurfMerken();const a=artikel.find(x=>x.id===id);const l=schleifenVon(a);if(l.length<MAX_SCHLEIFEN)l.push({links:'',rechts:''});schleifenSichern();zeichneMerkliste()}
+function schleifeWeg(id,i){entwurfMerken();schleifen[id].splice(i,1);schleifenSichern();zeichneMerkliste()}
+function schleifeText(feld){schleifen[feld.dataset.id][+feld.dataset.i][feld.dataset.seite]=feld.value;schleifenSichern()}
+function schleifenHtml(a){
+  const l=schleifenVon(a);
+  return '<div class="schleifen">'+l.map((s,i)=>
+    '<div class="schleife"><div class="schleife-kopf">Schleife '+(i+1)+'<button type="button" onclick="schleifeWeg(\''+a.id+'\','+i+')">entfernen</button></div>'+
+    '<div class="baender">'+
+      '<label>Linkes Band – Spruch<textarea rows="2" data-id="'+a.id+'" data-i="'+i+'" data-seite="links" oninput="schleifeText(this)" placeholder="z. B. In stiller Trauer">'+esc(s.links)+'</textarea></label>'+
+      '<label>Rechtes Band – von wem<textarea rows="2" data-id="'+a.id+'" data-i="'+i+'" data-seite="rechts" oninput="schleifeText(this)" placeholder="z. B. Deine Kinder Anna und Paul">'+esc(s.rechts)+'</textarea></label>'+
+    '</div></div>').join('')+
+    (l.length<MAX_SCHLEIFEN?'<button type="button" class="schleife-neu" onclick="schleifeHinzu(\''+a.id+'\')">+ '+(l.length?'Weitere Schleife':'Schleife')+' hinzufügen</button>':'')+
+  '</div>';
+}
+/* Nur ausgefüllte Schleifen der gemerkten Artikel mitschicken. */
+function schleifenZumSenden(){
+  const aus={};
+  [...gemerkt].forEach(id=>{const l=(schleifen[id]||[]).filter(s=>s.links.trim()||s.rechts.trim());if(l.length)aus[id]=l});
+  return aus;
+}
+
 /* --- Merkliste und Absenden --- */
 let entwurf={name:'',kontakt:'',fuer:FUER,anmerkung:''};
 function merklisteOeffnen(){zeichneMerkliste();document.getElementById('merkliste').classList.add('offen');document.body.style.overflow='hidden'}
@@ -270,7 +316,8 @@ function zeichneMerkliste(){
   const liste=artikel.filter(a=>gemerkt.has(a.id));
   document.getElementById('blatt').innerHTML=
     '<div class="blatt-kopf"><h3>Ihre Merkliste</h3><button class="zu" onclick="merklisteSchliessen()" aria-label="Schließen">✕</button></div>'+
-    (liste.length?'<ul class="liste">'+liste.map(a=>'<li><img src="'+esc(a.bild)+'" alt=""><div class="wer">'+esc(a.name)+'<small>'+esc(a.gruppe)+(a.preis?' · '+esc(a.preis):'')+'</small></div><button class="weg" onclick="umschalten(\''+a.id+'\')">Entfernen</button></li>').join('')+'</ul>'
+    (liste.length?'<p class="schleifen-hinweis">Schleifentexte bitte genau so schreiben, wie sie auf der Schleife stehen sollen – auch die Namen.</p>'+
+      '<ul class="liste">'+liste.map(a=>'<li><div class="zeile"><img src="'+esc(a.bild)+'" alt=""><div class="wer">'+esc(a.name)+'<small>'+esc(a.gruppe)+(a.preis?' · '+esc(a.preis):'')+'</small></div><button class="weg" onclick="umschalten(\''+a.id+'\')">Entfernen</button></div>'+schleifenHtml(a)+'</li>').join('')+'</ul>'
       :'<p style="color:var(--text-muted);margin-bottom:1rem">Noch nichts gemerkt. Tippen Sie auf das Herz bei einem Bild.</p>')+
     '<form onsubmit="absenden(event)">'+
       '<label for="f_name">Ihr Name *</label><input id="f_name" autocomplete="name" required value="'+esc(entwurf.name)+'">'+
@@ -287,7 +334,8 @@ function zeichneMerkliste(){
 function mailText(){
   const liste=artikel.filter(a=>gemerkt.has(a.id));
   return 'Guten Tag,\n\nhier ist unsere Auswahl'+(entwurf.fuer?' für '+entwurf.fuer:'')+':\n\n'+
-    liste.map((a,i)=>(i+1)+'. '+a.name+' ('+a.gruppe+')').join('\n')+
+    liste.map((a,i)=>(i+1)+'. '+a.name+' ('+a.gruppe+')'+(schleifenZumSenden()[a.id]||[]).map((s,j)=>
+      '\n   Schleife '+(j+1)+' links: '+s.links.trim()+'\n   Schleife '+(j+1)+' rechts: '+s.rechts.trim()).join('')).join('\n')+
     (entwurf.anmerkung?'\n\nAnmerkung:\n'+entwurf.anmerkung:'')+
     '\n\n'+entwurf.name+'\n'+entwurf.kontakt;
 }
@@ -298,7 +346,7 @@ async function absenden(e){
   knopf.disabled=true;knopf.textContent='Wird gesendet …';fehler.style.display='none';
   try{
     const r=await fetch('/api/auswahl',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ids:[...gemerkt],name:entwurf.name,kontakt:entwurf.kontakt,fuer:entwurf.fuer,anmerkung:entwurf.anmerkung,website:document.getElementById('f_website').value})});
+      body:JSON.stringify({ids:[...gemerkt],name:entwurf.name,kontakt:entwurf.kontakt,fuer:entwurf.fuer,anmerkung:entwurf.anmerkung,schleifen:schleifenZumSenden(),website:document.getElementById('f_website').value})});
     const j=await r.json().catch(()=>({}));
     if(r.ok&&j.ok){gesendet();return}
     if(r.status===400)throw Object.assign(new Error(j.error||'Bitte Eingaben prüfen.'),{eingabe:true});
@@ -313,7 +361,7 @@ async function absenden(e){
   }
 }
 function gesendet(){
-  gemerkt.clear();sichern();leisteAktualisieren();
+  gemerkt.clear();sichern();schleifen={};schleifenSichern();leisteAktualisieren();
   document.querySelectorAll('.karte.gemerkt').forEach(k=>k.classList.remove('gemerkt'));
   document.getElementById('blatt').innerHTML='<div class="danke"><div class="zeichen">✓</div><h3>Vielen Dank</h3>'+
     '<p>Ihre Auswahl ist bei uns angekommen. Wir melden uns bei Ihnen.</p>'+
