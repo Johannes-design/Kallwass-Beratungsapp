@@ -18,7 +18,7 @@
  * stattdessen an, die Auswahl über das eigene Mail-Programm zu schicken.
  *
  * Body (JSON): { ids: string[], name, kontakt, fuer, anmerkung, schleifen, website }
- *   schleifen: { produktId: [{ links, rechts }] } – Schleifentexte, höchstens 4 je Artikel
+ *   schleifen: { produktId: [{ text }] } – je Schleife ein Text, höchstens 4 je Artikel
  *   website ist ein unsichtbares Lockfeld: Menschen lassen es leer, Spam-Bots nicht.
  */
 
@@ -63,15 +63,15 @@ export default async function handler(req, res) {
   const ids = [...new Set((Array.isArray(body.ids) ? body.ids : [])
     .filter(id => typeof id === 'string' && /^[A-Za-z0-9]{10,40}$/.test(id)))].slice(0, MAX_ARTIKEL);
 
-  // Schleifentexte je Artikel: { produktId: [{ links, rechts }] }. Zeilenumbrüche bleiben,
+  // Schleifentexte je Artikel: { produktId: [{ text }] }. Zeilenumbrüche bleiben,
   // die Schreibweise ist genau das, was die Familie eingetippt hat.
   const band = s => String(s == null ? '' : s).replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').trim().slice(0, 300);
   const schleifen = {};
   const roh = body.schleifen && typeof body.schleifen === 'object' ? body.schleifen : {};
   for (const id of ids) {
     const liste = (Array.isArray(roh[id]) ? roh[id] : []).slice(0, 4)
-      .map(s => ({ links: band(s && s.links), rechts: band(s && s.rechts) }))
-      .filter(s => s.links || s.rechts);
+      .map(s => ({ text: band(s && s.text) }))
+      .filter(s => s.text);
     if (liste.length) schleifen[id] = liste;
   }
 
@@ -95,8 +95,7 @@ export default async function handler(req, res) {
   const zeilen = artikel.map((p, i) =>
     (i + 1) + '. ' + p.name + (p.gruppe ? ' – ' + p.gruppe : '') + (p.preis ? ' – ' + p.preis : '') +
     p.schleifen.map((s, j) =>
-      '\n   Schleife ' + (j + 1) + ' links:  ' + (s.links || '–') +
-      '\n   Schleife ' + (j + 1) + ' rechts: ' + (s.rechts || '–')).join(''));
+      '\n   Schleife ' + (j + 1) + ': ' + s.text).join(''));
   const klartext = [
     'Neue Auswahl über die Beratungsapp',
     '',
@@ -118,7 +117,7 @@ export default async function handler(req, res) {
   for (let i = 0; i < kacheln.length; i += 3) reihen.push('<tr>' + kacheln.slice(i, i + 3).join('') + '</tr>');
 
   const mitSchleife = artikel.filter(p => p.schleifen.length);
-  const bandZelle = t => '<td style="width:50%;vertical-align:top;padding:8px 10px;background:#FAF7F2;border:1px solid #E8E2DA;' +
+  const bandZelle = t => '<td style="vertical-align:top;padding:8px 10px;background:#FAF7F2;border:1px solid #E8E2DA;' +
     'font-family:Georgia,serif;font-size:15px;white-space:pre-wrap">' + (t ? html(t) : '<span style="color:#9A8A8E">–</span>') + '</td>';
   const schleifenHtml = mitSchleife.length
     ? '<h3 style="font-family:Georgia,serif;color:#5A1A22;font-weight:normal;margin-top:24px">Schleifentexte</h3>' +
@@ -126,8 +125,8 @@ export default async function handler(req, res) {
         '<p style="margin:14px 0 4px"><b>' + html(p.name) + '</b></p>' +
         p.schleifen.map((s, j) =>
           '<table cellspacing="0" cellpadding="0" style="width:100%;max-width:560px;border-collapse:collapse;margin-bottom:6px">' +
-          '<tr><td colspan="2" style="font-size:12px;color:#6B5A5E;padding:2px 0">Schleife ' + (j + 1) + ' · links Spruch, rechts von wem</td></tr>' +
-          '<tr>' + bandZelle(s.links) + bandZelle(s.rechts) + '</tr></table>').join('')).join('')
+          '<tr><td style="font-size:12px;color:#6B5A5E;padding:2px 0">Schleife ' + (j + 1) + '</td></tr>' +
+          '<tr>' + bandZelle(s.text) + '</tr></table>').join('')).join('')
     : '';
 
   const inhalt =
