@@ -59,6 +59,12 @@ main{max-width:1100px;margin:0 auto;padding:1.2rem 1rem}
 .karte .preis{display:block;color:var(--text-muted);font-size:.82rem;margin-top:.15rem}
 .herz{position:absolute;top:.5rem;right:.5rem;width:2.6rem;height:2.6rem;border-radius:50%;background:rgba(254,252,249,.92);box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center}
 .herz svg{width:1.3rem;height:1.3rem;fill:none;stroke:var(--bordeaux);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Am PC zeigt man mit der Maus – dort reicht eine kleinere Nadel. Am Handy bleibt sie
+   groß genug für den Daumen. */
+@media(hover:hover) and (pointer:fine){
+  .herz{width:2rem;height:2rem;top:.45rem;right:.45rem}
+  .herz svg{width:1rem;height:1rem}
+}
 .gemerkt .herz,.herz.an{background:var(--bordeaux)}
 .gemerkt .herz svg,.herz.an svg{fill:var(--gold);stroke:var(--gold)}
 
