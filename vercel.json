@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    { "source": "/blumen", "destination": "/auswahl.html", "permanent": false },
+    { "source": "/urnen", "destination": "/auswahl.html?kategorie=Urnen", "permanent": false }
+  ],
   "headers": [
     {
       "source": "/sw.js",
