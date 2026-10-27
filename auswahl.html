@@ -108,6 +108,29 @@ textarea{min-height:5rem;resize:vertical}
 .danke{text-align:center;padding:1.5rem .5rem}
 .danke .zeichen{font-size:2.4rem;color:var(--gold)}
 .danke p{color:var(--text-muted);margin-top:.6rem}
+.uebersicht{border:1px solid var(--warm-gray);border-radius:var(--radius);background:var(--warm-white);padding:1rem;margin-top:1rem}
+.ue-kopf{text-align:center;border-bottom:1px solid var(--warm-gray);padding-bottom:.7rem;margin-bottom:.4rem}
+.ue-kopf .marke{font-family:var(--font-display);color:var(--gold-dark);letter-spacing:.12em;text-transform:uppercase;font-size:.75rem}
+.ue-kopf h3{font-family:var(--font-display);font-weight:500;color:var(--bordeaux);font-size:1.4rem}
+.ue-kopf p{font-size:.8rem;color:var(--text-muted)}
+.ue-liste{list-style:none}
+.ue-liste li{display:flex;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--warm-gray);break-inside:avoid}
+.ue-liste img{width:72px;height:72px;border-radius:8px;object-fit:cover;flex:0 0 auto}
+.ue-liste b{font-weight:600;font-size:.95rem}
+.ue-liste small{display:block;color:var(--text-light);font-size:.8rem}
+.ue-schleife,.ue-anmerkung{margin-top:.35rem;font-size:.9rem;white-space:pre-wrap;background:var(--cream);border-left:3px solid var(--gold);padding:.3rem .55rem}
+.ue-schleife span,.ue-anmerkung span{display:block;font-size:.72rem;color:var(--text-muted);white-space:normal}
+.ue-anmerkung{margin-top:.8rem}
+.ue-fuss{text-align:center;font-size:.75rem;color:var(--text-light);margin-top:.8rem}
+/* Drucken bzw. „Als PDF sichern": nur die Übersicht, ohne Katalog und Knöpfe */
+@media print{
+  body{padding:0;background:#fff}
+  body>*:not(#merkliste){display:none!important}
+  #merkliste{position:static;display:block!important;background:none}
+  .blatt{max-height:none;overflow:visible;border-radius:0;padding:0;max-width:none}
+  .danke,.nicht-drucken{display:none!important}
+  .uebersicht{border:0;margin:0}
+}
 
 .gross{position:fixed;inset:0;z-index:60;background:rgba(20,10,12,.94);display:none;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
 .gross.offen{display:flex}
@@ -279,15 +302,14 @@ document.getElementById('gross').addEventListener('touchend',e=>{if(wischX==null
 /* --- Schleifen je Artikel ---
    Angehörige tragen den Schleifentext selbst ein, so kommt die Schreibweise der Namen
    genau so bei uns an. Je Schleife ein Textfeld – wie viele Schleifen, gibt die Familie vor.
-   Bei Gestecken, Kränzen, Herzen und Sargauflagen steht die erste Schleife schon da,
-   beim Urnenschmuck nur der Knopf – dort ist eine Schleife die Ausnahme. */
-const MIT_SCHLEIFE=['Blumengestecke','Blumenkränze','Blumenherzen','Sargauflagen'];
+   Ob überhaupt eine Schleife dran soll, entscheidet die Familie selbst über den Knopf;
+   vorher steht kein leeres Feld da, das wie eine Pflichtangabe wirkt. */
 const MAX_SCHLEIFEN=4;
 let schleifen={};
 try{schleifen=JSON.parse(localStorage.getItem(SPEICHER+':schleifen2'))||{}}catch(e){}
 function schleifenSichern(){try{localStorage.setItem(SPEICHER+':schleifen2',JSON.stringify(schleifen))}catch(e){}}
 function schleifenVon(a){
-  if(!schleifen[a.id])schleifen[a.id]=MIT_SCHLEIFE.indexOf(a.gruppe)>-1?[{text:''}]:[];
+  if(!schleifen[a.id])schleifen[a.id]=[];
   return schleifen[a.id];
 }
 function schleifeHinzu(id){entwurfMerken();const a=artikel.find(x=>x.id===id);const l=schleifenVon(a);if(l.length<MAX_SCHLEIFEN)l.push({text:''});schleifenSichern();zeichneMerkliste()}
@@ -319,7 +341,7 @@ function zeichneMerkliste(){
   const liste=artikel.filter(a=>gemerkt.has(a.id));
   document.getElementById('blatt').innerHTML=
     '<div class="blatt-kopf"><h3>Ihre Merkliste</h3><button class="zu" onclick="merklisteSchliessen()" aria-label="Schließen">✕</button></div>'+
-    (liste.length?'<p class="schleifen-hinweis">Schleifentexte bitte genau so schreiben, wie sie auf der Schleife stehen sollen – auch die Namen.</p>'+
+    (liste.length?'<p class="schleifen-hinweis">Soll eine Schleife dazu? Dann auf „Schleife hinzufügen“ tippen und den Text genau so schreiben, wie er auf der Schleife stehen soll – auch die Namen.</p>'+
       '<ul class="liste">'+liste.map(a=>'<li><div class="zeile"><img src="'+esc(a.bild)+'" alt=""><div class="wer">'+esc(a.name)+'<small>'+esc(a.gruppe)+(a.preis?' · '+esc(a.preis):'')+'</small></div><button class="weg" onclick="umschalten(\''+a.id+'\')">Entfernen</button></div>'+schleifenHtml(a)+'</li>').join('')+'</ul>'
       :'<p style="color:var(--text-muted);margin-bottom:1rem">Noch nichts gemerkt. Tippen Sie auf die Stecknadel bei einem Bild.</p>')+
     '<form onsubmit="absenden(event)">'+
@@ -363,12 +385,29 @@ async function absenden(e){
     fehler.innerHTML='Das Senden hat gerade nicht geklappt. Sie können uns die Auswahl auch über Ihr Mail-Programm schicken: <a href="'+esc(link)+'">E-Mail öffnen</a>';
   }
 }
+/* Nach dem Absenden bekommt die Familie eine Übersicht dessen, was bei uns angekommen ist –
+   zum Abspeichern als PDF oder Ausdrucken. Gebaut wird sie, bevor die Merkliste geleert wird. */
+function uebersichtHtml(){
+  const liste=artikel.filter(a=>gemerkt.has(a.id)), sch=schleifenZumSenden();
+  const datum=new Date().toLocaleString('de-DE',{dateStyle:'long',timeStyle:'short'});
+  return '<div class="uebersicht">'+
+    '<div class="ue-kopf"><div class="marke">Bestattungshaus Kallwaß</div><h3>Ihre Auswahl'+(entwurf.fuer?' für '+esc(entwurf.fuer):'')+'</h3>'+
+    '<p>Gesendet am '+esc(datum)+' von '+esc(entwurf.name)+' · '+esc(entwurf.kontakt)+'</p></div>'+
+    '<ul class="ue-liste">'+liste.map(a=>'<li><img src="'+esc(a.bild)+'" alt=""><div><b>'+esc(a.name)+'</b><small>'+esc(a.gruppe)+'</small>'+
+      (sch[a.id]||[]).map((s,j)=>'<div class="ue-schleife"><span>Schleife '+(j+1)+'</span>'+esc(s.text.trim())+'</div>').join('')+
+    '</div></li>').join('')+'</ul>'+
+    (entwurf.anmerkung?'<div class="ue-anmerkung"><span>Anmerkung</span>'+esc(entwurf.anmerkung)+'</div>':'')+
+    '<p class="ue-fuss">Bestattungshaus Kallwaß · '+POST+'</p></div>';
+}
 function gesendet(){
+  const uebersicht=uebersichtHtml();
   gemerkt.clear();sichern();schleifen={};schleifenSichern();leisteAktualisieren();
   document.querySelectorAll('.karte.gemerkt').forEach(k=>k.classList.remove('gemerkt'));
   document.getElementById('blatt').innerHTML='<div class="danke"><div class="zeichen">✓</div><h3>Vielen Dank</h3>'+
-    '<p>Ihre Auswahl ist bei uns angekommen. Wir melden uns bei Ihnen.</p>'+
-    '<div class="aktionen" style="justify-content:center"><button class="knopf" onclick="merklisteSchliessen()">Schließen</button></div></div>';
+    '<p>Ihre Auswahl ist bei uns angekommen. Wir melden uns bei Ihnen.</p></div>'+
+    uebersicht+
+    '<div class="aktionen nicht-drucken" style="justify-content:center"><button class="knopf leer" onclick="merklisteSchliessen()">Schließen</button>'+
+    '<button class="knopf" onclick="window.print()">Übersicht speichern</button></div>';
 }
 
 start();
