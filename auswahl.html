@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="vendor/fonts/schriften.css" rel="stylesheet">
 <!--
-  Kundenseite: Angehörige blättern durch den Katalog, merken sich mit dem Herz,
+  Kundenseite: Angehörige blättern durch den Katalog, merken sich mit der Stecknadel,
   was ihnen gefällt, und schicken die Merkliste ab (→ /api/auswahl → Mail an post@).
 
   Aufruf:  /auswahl.html?fuer=Erika%20Muster            Blumen (Standard)
@@ -58,7 +58,7 @@ main{max-width:1100px;margin:0 auto;padding:1.2rem 1rem}
 .karte .name{padding:.6rem .75rem .75rem;font-size:.9rem;line-height:1.35;color:var(--text-dark)}
 .karte .preis{display:block;color:var(--text-muted);font-size:.82rem;margin-top:.15rem}
 .herz{position:absolute;top:.5rem;right:.5rem;width:2.6rem;height:2.6rem;border-radius:50%;background:rgba(254,252,249,.92);box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center}
-.herz svg{width:1.35rem;height:1.35rem;fill:none;stroke:var(--bordeaux);stroke-width:2}
+.herz svg{width:1.3rem;height:1.3rem;fill:none;stroke:var(--bordeaux);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .gemerkt .herz,.herz.an{background:var(--bordeaux)}
 .gemerkt .herz svg,.herz.an svg{fill:var(--gold);stroke:var(--gold)}
 
@@ -127,7 +127,7 @@ footer{text-align:center;color:var(--text-light);font-size:.82rem;padding:2rem 1
   <div class="marke">Bestattungshaus Kallwaß</div>
   <h1 id="titel">Blumenauswahl</h1>
   <div class="fuer" id="fuerZeile" hidden></div>
-  <p class="hinweis">Nehmen Sie sich Zeit. Tippen Sie auf das Herz bei allem, was Ihnen gefällt – am Ende schicken Sie uns Ihre Merkliste, und wir melden uns bei Ihnen.</p>
+  <p class="hinweis">Nehmen Sie sich Zeit. Tippen Sie auf die Stecknadel bei allem, was Ihnen gefällt – am Ende schicken Sie uns Ihre Merkliste, und wir melden uns bei Ihnen.</p>
 </header>
 
 <nav class="gruppen" id="gruppen" aria-label="Arten"></nav>
@@ -160,7 +160,8 @@ footer{text-align:center;color:var(--text-light);font-size:.82rem;padding:2rem 1
 const API_KEY='AIzaSyDzxxj-kK4eo2RgW-ZQt26cJzHGRs75WbQ';
 const BASIS='https://firestore.googleapis.com/v1/projects/beratungsapp-bh-kallwass/databases/(default)/documents/';
 const POST='post@bestattungshaus-kallwass.de';
-const HERZ='<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.2 4.3 2.4.7-1.2 2.1-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>';
+// Merk-Symbol: Stecknadel statt Herz – ein Herz wirkt bei Trauerfloristik unpassend.
+const HERZ='<svg viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M5 17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.7a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2z"/></svg>';
 
 const param=new URLSearchParams(location.search);
 const KATEGORIE=param.get('kategorie')||'Blumen';
@@ -318,7 +319,7 @@ function zeichneMerkliste(){
     '<div class="blatt-kopf"><h3>Ihre Merkliste</h3><button class="zu" onclick="merklisteSchliessen()" aria-label="Schließen">✕</button></div>'+
     (liste.length?'<p class="schleifen-hinweis">Schleifentexte bitte genau so schreiben, wie sie auf der Schleife stehen sollen – auch die Namen.</p>'+
       '<ul class="liste">'+liste.map(a=>'<li><div class="zeile"><img src="'+esc(a.bild)+'" alt=""><div class="wer">'+esc(a.name)+'<small>'+esc(a.gruppe)+(a.preis?' · '+esc(a.preis):'')+'</small></div><button class="weg" onclick="umschalten(\''+a.id+'\')">Entfernen</button></div>'+schleifenHtml(a)+'</li>').join('')+'</ul>'
-      :'<p style="color:var(--text-muted);margin-bottom:1rem">Noch nichts gemerkt. Tippen Sie auf das Herz bei einem Bild.</p>')+
+      :'<p style="color:var(--text-muted);margin-bottom:1rem">Noch nichts gemerkt. Tippen Sie auf die Stecknadel bei einem Bild.</p>')+
     '<form onsubmit="absenden(event)">'+
       '<label for="f_name">Ihr Name *</label><input id="f_name" autocomplete="name" required value="'+esc(entwurf.name)+'">'+
       '<label for="f_kontakt">Telefon oder E-Mail *</label><input id="f_kontakt" autocomplete="email" required value="'+esc(entwurf.kontakt)+'">'+
