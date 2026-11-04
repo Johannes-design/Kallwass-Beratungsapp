@@ -70,6 +70,8 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .weeks{display:grid;grid-template-columns:repeat(7,1fr)}
 .cell{min-height:104px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:.35rem;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden}
 .cell:nth-child(7n){border-right:none}
+.cell{cursor:pointer;-webkit-tap-highlight-color:rgba(184,150,62,.25)}
+.cell:hover{box-shadow:inset 0 0 0 2px var(--gold-light)}
 .cell.other{background:var(--surface-2)}
 .cell.other .dnum{color:var(--text-light)}
 .cell.we{background:#fcfaf6}
@@ -126,6 +128,10 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .modal-body{padding:1.2rem}
 .owner{display:flex;align-items:center;gap:.5rem;font-size:.86rem;font-weight:700;margin-bottom:1rem;padding:.5rem .7rem;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm)}
 .owner .dot{width:14px;height:14px;border-radius:50%}
+.owner label{font-size:.76rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.owner select{flex:1;min-width:0;appearance:none;border:1.5px solid var(--line-strong);border-radius:var(--radius-sm);background:#fff;padding:.5rem 2rem .5rem .7rem;font-family:inherit;font-size:.95rem;font-weight:700;color:var(--text);background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237B1A2E' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right .6rem center}
+.owner select:focus{outline:none;border-color:var(--gold)}
+.owner select:disabled{background-color:var(--surface-2);color:var(--text);opacity:1}
 .type-seg{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem}
 .type-seg button{padding:.7rem;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:var(--radius-sm);font-weight:800;font-size:.88rem;color:var(--text-muted);transition:.18s}
 .type-seg button.active{border-color:var(--weinrot);background:var(--weinrot);color:#fff}
@@ -133,7 +139,9 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .fld label{display:block;font-size:.76rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem}
 .fld input{width:100%;padding:.6rem .7rem;border:1.5px solid var(--line-strong);border-radius:var(--radius-sm);font-family:inherit;font-size:.95rem;color:var(--text);background:var(--surface)}
 .fld input:focus{outline:none;border-color:var(--gold)}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.7rem}
+.row2 .fld{min-width:0}
+.fld input[type=date],.fld input[type=time]{min-width:0;max-width:100%;display:block;-webkit-appearance:none;appearance:none;min-height:2.6rem}
 .modal-foot{display:flex;gap:.6rem;padding:0 1.2rem 1.2rem;align-items:center}
 .btn-save{flex:1;border:none;background:var(--gold);color:#fff;font-weight:800;padding:.75rem;border-radius:var(--radius-sm);font-size:.95rem;box-shadow:var(--shadow)}
 .btn-save:hover{background:#a9872f}
@@ -217,7 +225,7 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
   <div class="modal">
     <div class="modal-head"><h3 id="mTitle">Neuer Eintrag</h3><button class="x" onclick="closeModal()">×</button></div>
     <div class="modal-body">
-      <div class="owner"><span class="dot" id="mDot"></span><span id="mOwner">—</span></div>
+      <div class="owner"><span class="dot" id="mDot"></span><label for="mOwner">Name</label><select id="mOwner"></select></div>
       <div class="type-seg">
         <button id="tUrlaub" class="active" onclick="setType('urlaub')">🏖 Urlaub</button>
         <button id="tTermin" onclick="setType('termin')">📅 Termin</button>
@@ -346,7 +354,16 @@ function initWho(){
   if(me&&!PERSONS.find(p=>p.name===me))me=null;
   sel.value=me||"";
   updateWhoDot();
-  sel.addEventListener('change',()=>{me=sel.value;try{localStorage.setItem('planer_me',me);}catch(e){}updateWhoDot();renderAll();});
+  sel.addEventListener('change',()=>{setMe(sel.value);});
+  const ms=document.getElementById('mOwner');
+  ms.innerHTML='<option value="">Bitte Namen wählen…</option>'+PERSONS.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+  ms.addEventListener('change',()=>{document.getElementById('mDot').style.background=ms.value?colorOf(ms.value):'transparent';clearErr();});
+}
+function setMe(name){
+  me=name||null;
+  try{localStorage.setItem('planer_me',me||'');}catch(e){}
+  document.getElementById('whoSel').value=me||'';
+  updateWhoDot();renderAll();
 }
 function updateWhoDot(){document.getElementById('whoDot').style.background=me?colorOf(me):'transparent';}
 
@@ -407,17 +424,17 @@ function renderMonth(){
     urlaube.forEach(e=>{if(shown>=max)return;shown++;
       const isS=e.start===dISO||(i%7===0), isE=e.end===dISO;
       const bg=colorOf(e.person),fg=txtColor(bg);
-      chips+=`<div class="chip span ${isS?'s':''} ${isE?'e':''}" style="background:${bg};color:${fg}" onclick="openEntry('${e.id}')" title="${esc(e.person)} · Urlaub ${fmtD(e.start)}–${fmtD(e.end)}">${isS?esc(e.person):'&nbsp;'}</div>`;
+      chips+=`<div class="chip span ${isS?'s':''} ${isE?'e':''}" style="background:${bg};color:${fg}" onclick="event.stopPropagation();openEntry('${e.id}')" title="${esc(e.person)} · Urlaub ${fmtD(e.start)}–${fmtD(e.end)}">${isS?esc(e.person):'&nbsp;'}</div>`;
     });
     termine.forEach(e=>{if(shown>=max)return;shown++;
       const bg=colorOf(e.person),fg=txtColor(bg);
       const lbl=(e.time?e.time+' ':'')+(e.title||e.person);
-      chips+=`<div class="chip" style="background:${bg};color:${fg}" onclick="openEntry('${e.id}')" title="${esc(e.person)}${e.title?' · '+esc(e.title):''}${e.note?' – '+esc(e.note):''}">${esc(lbl)}${e.note?' <span class="ci">📝</span>':''}</div>`;
+      chips+=`<div class="chip" style="background:${bg};color:${fg}" onclick="event.stopPropagation();openEntry('${e.id}')" title="${esc(e.person)}${e.title?' · '+esc(e.title):''}${e.note?' – '+esc(e.note):''}">${esc(lbl)}${e.note?' <span class="ci">📝</span>':''}</div>`;
     });
     const extra=dayE.length-shown;
     if(extra>0)chips+=`<div class="more">+${extra} mehr</div>`;
     const dd=d.getDate();
-    html+=`<div class="${cls.join(' ')}" ondblclick="openAdd('${dISO}')"><span class="dnum">${dd}</span>${chips}</div>`;
+    html+=`<div class="${cls.join(' ')}" onclick="openAdd('${dISO}')" title="${fmtD(dISO)} – antippen für neuen Eintrag"><span class="dnum">${dd}</span>${chips}</div>`;
   }
   html+='</div></div>';
   document.getElementById('viewMonat').innerHTML=html;
@@ -475,7 +492,6 @@ function renderLegend(){
 /* ===== Modal ===== */
 function requireMe(){if(!me){showMsg('Name wählen','Bitte oben rechts bei <b>„Ich bin"</b> zuerst deinen Namen auswählen.').then(()=>document.getElementById('whoSel').focus());return false;}return true;}
 function openAdd(prefillISO){
-  if(!requireMe())return;
   editId=null;modalType='urlaub';
   document.getElementById('mTitle').textContent='Neuer Eintrag';
   document.getElementById('btnDel').classList.add('hidden');
@@ -486,7 +502,7 @@ function openAdd(prefillISO){
   document.getElementById('inTime').value='';
   document.getElementById('inTitle').value='';
   document.getElementById('inNote').value='';
-  clearErr();setType('urlaub');setOwner(me);openOv();
+  clearErr();setType('urlaub');setOwner(me,false);openOv();
 }
 function openEntry(id){
   const e=entries.find(x=>x.id===id);if(!e)return;
@@ -508,9 +524,13 @@ function openEntry(id){
   document.getElementById('btnDel').classList.remove('hidden');
   if(e.type==='urlaub'){document.getElementById('inStart').value=e.start;document.getElementById('inEnd').value=e.end;}
   else{document.getElementById('inDate').value=e.date||e.start;document.getElementById('inTime').value=e.time||'';document.getElementById('inTitle').value=e.title||'';document.getElementById('inNote').value=e.note||'';}
-  clearErr();setType(e.type);setOwner(e.person);openOv();
+  clearErr();setType(e.type);setOwner(e.person,true);openOv();
 }
-function setOwner(name){document.getElementById('mOwner').textContent=name;document.getElementById('mDot').style.background=colorOf(name);}
+function setOwner(name,locked){
+  const ms=document.getElementById('mOwner');
+  ms.value=name||'';ms.disabled=!!locked;
+  document.getElementById('mDot').style.background=name?colorOf(name):'transparent';
+}
 function setType(t){modalType=t;
   document.getElementById('tUrlaub').classList.toggle('active',t==='urlaub');
   document.getElementById('tTermin').classList.toggle('active',t==='termin');
@@ -521,21 +541,23 @@ function openOv(){document.getElementById('ov').classList.add('show');}
 function closeModal(){document.getElementById('ov').classList.remove('show');}
 
 async function saveEntry(){
-  if(!requireMe())return;
+  const person=document.getElementById('mOwner').value;
+  if(!person){showErr('Bitte deinen Namen auswählen.');document.getElementById('mOwner').focus();return;}
   let data;
   if(modalType==='urlaub'){
     let s=document.getElementById('inStart').value, e=document.getElementById('inEnd').value;
     if(!s){showErr('Bitte das Von-Datum angeben.');return;}
     if(!e)e=s; if(e<s){const t=s;s=e;e=t;}
-    data={type:'urlaub',person:me,start:s,end:e,date:null,time:'',title:'',note:''};
+    data={type:'urlaub',person,start:s,end:e,date:null,time:'',title:'',note:''};
   }else{
     const d=document.getElementById('inDate').value;
     const title=document.getElementById('inTitle').value.trim();
     if(!d){showErr('Bitte das Datum angeben.');return;}
     if(!title){showErr('Bitte beschreiben, was der Termin ist.');document.getElementById('inTitle').focus();return;}
-    data={type:'termin',person:me,date:d,start:d,end:d,time:document.getElementById('inTime').value||'',title,note:document.getElementById('inNote').value.trim()};
+    data={type:'termin',person,date:d,start:d,end:d,time:document.getElementById('inTime').value||'',title,note:document.getElementById('inNote').value.trim()};
   }
   clearErr();
+  if(person!==me)setMe(person); // gewählten Namen fürs nächste Mal merken
   if(!db){ // Offline-Vorschau
     if(editId){const idx=entries.findIndex(x=>x.id===editId);if(idx>-1)entries[idx]={...entries[idx],...data};}
     else entries.push({id:'local_'+Date.now(),...data});
