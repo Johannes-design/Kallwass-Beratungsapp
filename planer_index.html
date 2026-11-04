@@ -166,6 +166,16 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .dbody .who2 .dot{width:14px;height:14px;border-radius:50%}
 #dFoot .btn-save,#dFoot .btn-del,#dFoot .btn-cancel{flex:1}
 
+/* Bereitschaft */
+.bs{position:absolute;top:0;left:0;right:0;height:4px}
+.bs-lbl{font-size:.64rem;font-weight:800;line-height:1.15;margin:-2px 0 1px .2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bs-lbl .short{display:none}
+.dbs{border-radius:var(--radius-sm);padding:.5rem .7rem;font-weight:800;font-size:.88rem;color:#fff}
+.lg.bsl{gap:.35rem}
+.lg.bsl i{width:16px;height:5px;border-radius:3px;display:inline-block}
+.y-bs{position:absolute;top:4px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:#fff;overflow:hidden;white-space:nowrap;border-right:1px solid #fff}
+@media(max-width:680px){.bs-lbl .long{display:none}.bs-lbl .short{display:inline}}
+
 /* Tagesübersicht */
 .dlist{display:flex;flex-direction:column;gap:.45rem;margin-top:.2rem}
 .ditem{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);cursor:pointer;font-size:.9rem;text-align:left;width:100%;font-family:inherit;color:var(--text)}
@@ -438,6 +448,25 @@ function workdaysInYear(e,y){
 }
 const tageTxt=n=>n===1?'1 Tag':`${n} Tage`;
 
+/* ===== Bereitschaft: wöchentlicher Wechsel Mo–So, Start 04.01.2027 mit Paul & Johannes ===== */
+const BS_START=new Date(2027,0,4);
+const BS_TEAMS=[
+  {names:['Paul','Johannes'],label:'Paul & Johannes',short:'P/J',color:'#4A6FA5'},
+  {names:['Volker','Emeli'],label:'Volker & Emeli',short:'V/E',color:'#6E9B3A'}
+];
+function bsWeek(d){const n=Math.floor((Math.round((d-BS_START)/86400000))/7);return n;}
+function bsTeam(dISO){const d=parse(dISO);if(d<BS_START)return null;return BS_TEAMS[bsWeek(d)%2];}
+/* Wochen im Zeitraum s..e, in denen 'person' Bereitschaft hat -> [{start,end}] */
+function bsDutyWeeks(person,s,e){
+  const out=[];
+  for(let d=parse(s),end=parse(e);d<=end;d=addDays(d,1)){
+    const t=bsTeam(iso(d));if(!t||!t.names.includes(person))continue;
+    const mon=addDays(BS_START,bsWeek(d)*7), sun=addDays(mon,6);
+    const k=iso(mon);if(!out.some(w=>w.start===k))out.push({start:k,end:iso(sun)});
+  }
+  return out;
+}
+
 /* ===== Firebase init (robust; App rendert auch ohne Verbindung) ===== */
 function startFirebase(){
   try{
@@ -526,7 +555,7 @@ function renderMonth(){
     const dISO=iso(d);
     const other=d.getMonth()!==m;
     const we=(d.getDay()===0||d.getDay()===6);
-    const hn=holidayName(dISO);
+    const hn=holidayName(dISO), bt=bsTeam(dISO);
     const cls=['cell'];if(other)cls.push('other');if(we)cls.push('we');if(hn)cls.push('hol');if(dISO===tISO)cls.push('today');
     const dayE=entriesForDay(dISO);
     // Urlaube zuerst (als Balken), dann Termine
@@ -547,7 +576,7 @@ function renderMonth(){
     const extra=dayE.length-shown;
     if(extra>0)chips+=`<div class="more">+${extra} mehr</div>`;
     const dd=d.getDate();
-    html+=`<div class="${cls.join(' ')}" onclick="dayClick('${dISO}')" title="${fmtD(dISO)} – antippen"><span class="dnum">${dd}</span>${hn?`<div class="hol-name" title="${hn}">${hn}</div>`:''}${chips}</div>`;
+    html+=`<div class="${cls.join(' ')}" onclick="dayClick('${dISO}')" title="${fmtD(dISO)} – antippen">${bt?`<span class="bs" style="background:${bt.color}"></span>`:''}<span class="dnum">${dd}</span>${hn?`<div class="hol-name" title="${hn}">${hn}</div>`:''}${bt&&(i%7===0||dISO==='2027-01-04')?`<div class="bs-lbl" style="color:${bt.color}" title="Bereitschaft ${bt.label}"><span class="long">🔔 ${bt.label}</span><span class="short">🔔 ${bt.short}</span></div>`:''}${chips}</div>`;
   }
   html+='</div></div>';
   document.getElementById('viewMonat').innerHTML=html;
@@ -565,7 +594,8 @@ async function dayClick(dISO){
   const list=entriesForDay(dISO).sort((a,b)=>(a.type===b.type?0:a.type==='urlaub'?-1:1)||String(a.time||'').localeCompare(String(b.time||'')));
   const hn=holidayName(dISO);
   if(!list.length&&!hn){openAdd(dISO,'urlaub');return;}
-  const html=`<div class="dlist">${hn?`<div class="dhol">🎉 Feiertag: ${hn}</div>`:''}${list.map(entryLine).join('')}</div>`;
+  const bt=bsTeam(dISO);
+  const html=`<div class="dlist">${hn?`<div class="dhol">🎉 Feiertag: ${hn}</div>`:''}${bt?`<div class="dbs" style="background:${bt.color}">🔔 Bereitschaft: ${bt.label}</div>`:''}${list.map(entryLine).join('')}</div>`;
   document.getElementById('dFoot').classList.add('wrap');
   const v=await dlg(fmtLong(dISO),html,[{label:'🏖 Urlaub eintragen',cls:'btn-save',val:'urlaub'},{label:'📅 Termin eintragen',cls:'btn-save',val:'termin'}]);
   document.getElementById('dFoot').classList.remove('wrap');
@@ -639,13 +669,23 @@ function renderYear(){
     if(showToday)bars+=`<div class="y-today" style="left:${pct(dayOfYear(tISO))}%"></div>`;
     rows+=`<div class="y-row"><div class="y-name"><span class="dot" style="background:${p.color}"></span>${p.name}<small title="Urlaubstage ${y} (Mo–Fr ohne Feiertage)">${yearDays(p.name,y)} T</small></div><div style="position:relative"><div class="y-track" onclick="trackClick(event,${y},'${p.name}')" title="Klicken für neuen Urlaub">${bars}</div></div></div>`;
   });
-  document.getElementById('viewJahr').innerHTML=`<div class="year"><div class="year-scroll"><div class="year-grid">${head}${rows}</div></div></div>`;
+  let bsBars='';
+  {let acc=0;for(let m=0;m<11;m++){acc+=dim[m];bsBars+=`<div class="y-sep" style="left:${pct(acc)}%"></div>`;}}
+  for(let d=new Date(y,0,1);d.getFullYear()===y;d=addDays(d,1)){
+    const t=bsTeam(iso(d));if(!t)continue;
+    const mon=d.getDay()===1||iso(d)===`${y}-01-01`;if(!mon&&iso(d)!=='2027-01-04')continue;
+    let len=0;for(let x=new Date(d);x.getFullYear()===y&&len<7&&(len===0||x.getDay()!==1);x=addDays(x,1))len++;
+    bsBars+=`<div class="y-bs" style="left:${pct(dayOfYear(iso(d)))}%;width:${pct(len)}%;background:${t.color}" title="Bereitschaft ${t.label}: ${fmtD(iso(d))}">${t.short}</div>`;
+  }
+  const bsRow=`<div class="y-row"><div class="y-name">🔔 Bereitschaft</div><div style="position:relative"><div class="y-track" style="cursor:default">${bsBars}</div></div></div>`;
+  document.getElementById('viewJahr').innerHTML=`<div class="year"><div class="year-scroll"><div class="year-grid">${head}${bsRow}${rows}</div></div></div>`;
 }
 
 /* ===== Legend ===== */
 function renderLegend(){
   let h='<div class="lg-title">Mitarbeiter</div>';
   h+=PERSONS.map(p=>`<span class="lg ${p.name===me?'me':''}"><span class="dot" style="background:${p.color}"></span>${p.name}</span>`).join('');
+  h+=BS_TEAMS.map(t=>`<span class="lg bsl"><i style="background:${t.color}"></i>🔔 ${t.label}</span>`).join('');
   document.getElementById('legend').innerHTML=h;
 }
 
@@ -700,6 +740,14 @@ function updateInfo(){
       ? `Du hast in der Zeit einen Termin: ${r.own.map(x=>`${fmtD(x.date||x.start)} ${esc(x.title||'')}`).join(', ')}`
       : `Du hast an dem Tag Urlaub (${r.own.map(x=>`${fmtShort(x.start)}–${fmtD(x.end)}`).join(', ')}).`);
   }
+  let bsWarn=false;
+  {const person=document.getElementById('mOwner').value;
+   let s=modalType==='urlaub'?document.getElementById('inStart').value:document.getElementById('inDate').value;
+   let e=modalType==='urlaub'?(document.getElementById('inEnd').value||s):s;
+   if(person&&s&&modalType==='urlaub'){ if(e<s){const t=s;s=e;e=t;}
+     const w=bsDutyWeeks(person,s,e);
+     if(w.length){bsWarn=true;parts.push(`Achtung: ${esc(person)} hat in der Zeit Bereitschaft (${w.map(x=>`${fmtShort(x.start)}–${fmtShort(x.end)}`).join(', ')}). Bitte Tausch absprechen.`);}
+   }}
   if(r.others.length){
     const names=r.others.map(x=>`${esc(x.person)} (${fmtShort(x.start)}–${fmtShort(x.end)})`);
     parts.push(`Gleichzeitig im Urlaub: ${names.join(', ')}`);
@@ -717,8 +765,8 @@ function updateInfo(){
   }
   box.innerHTML=parts.join('<br>');
   box.classList.toggle('hidden',!parts.length);
-  box.classList.toggle('warn',r.own.length>0);
-  box.classList.toggle('calm',!r.own.length&&!r.others.length);
+  box.classList.toggle('warn',r.own.length>0||bsWarn);
+  box.classList.toggle('calm',!r.own.length&&!r.others.length&&!bsWarn);
 }
 ['inStart','inEnd','inDate','mOwner'].forEach(id=>document.getElementById(id).addEventListener('change',updateInfo));
 ['inStart','inEnd','inDate'].forEach(id=>document.getElementById(id).addEventListener('input',updateInfo));
