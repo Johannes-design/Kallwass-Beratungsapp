@@ -76,6 +76,13 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .cell.other .dnum{color:var(--text-light)}
 .cell.we{background:#fcfaf6}
 .cell.today{background:var(--today)}
+.cell.hol{background:#FBEFF1}
+.cell.hol .dnum{color:var(--weinrot)}
+.hol-name{font-size:.66rem;font-weight:800;color:var(--weinrot);line-height:1.15;margin:-2px 0 1px .2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dhol{background:#FBEFF1;color:var(--weinrot);border:1px solid #f0cdd4;border-radius:var(--radius-sm);padding:.5rem .7rem;font-weight:800;font-size:.88rem}
+.y-hol{position:absolute;top:0;bottom:0;background:rgba(123,26,46,.13);pointer-events:none}
+.ymon .mhol{padding:.4rem .8rem;font-size:.78rem;font-weight:700;color:var(--weinrot);background:#FBEFF1;border-bottom:1px solid var(--line)}
+.info.calm{background:var(--surface-2);color:var(--text-muted);border-color:var(--line)}
 .dnum{font-size:.82rem;font-weight:800;color:var(--text);width:1.7rem;height:1.7rem;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .cell.today .dnum{background:var(--weinrot);color:#fff}
 .chip{font-size:.72rem;font-weight:700;color:#fff;padding:.12rem .4rem;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;cursor:pointer;display:flex;align-items:center;gap:.3rem}
@@ -399,9 +406,22 @@ const holCache={};
 function holidays(y){
   if(holCache[y])return holCache[y];
   const o=easter(y);
-  const list=[new Date(y,0,1),new Date(y,2,8),addDays(o,-2),addDays(o,1),new Date(y,4,1),addDays(o,39),addDays(o,50),new Date(y,9,3),new Date(y,9,31),new Date(y,11,25),new Date(y,11,26)];
-  return holCache[y]=new Set(list.map(iso));
+  const list=[
+    [new Date(y,0,1),'Neujahr'],
+    [new Date(y,2,8),'Frauentag'],
+    [addDays(o,-2),'Karfreitag'],
+    [addDays(o,1),'Ostermontag'],
+    [new Date(y,4,1),'Tag der Arbeit'],
+    [addDays(o,39),'Himmelfahrt'],
+    [addDays(o,50),'Pfingstmontag'],
+    [new Date(y,9,3),'Tag der Dt. Einheit'],
+    [new Date(y,9,31),'Reformationstag'],
+    [new Date(y,11,25),'1. Weihnachtstag'],
+    [new Date(y,11,26),'2. Weihnachtstag']
+  ];
+  return holCache[y]=new Map(list.map(([d,n])=>[iso(d),n]));
 }
+const holidayName=dISO=>holidays(Number(dISO.slice(0,4))).get(dISO)||'';
 function workdays(s,e){
   let n=0;
   for(let d=parse(s),end=parse(e);d<=end;d=addDays(d,1)){
@@ -506,7 +526,8 @@ function renderMonth(){
     const dISO=iso(d);
     const other=d.getMonth()!==m;
     const we=(d.getDay()===0||d.getDay()===6);
-    const cls=['cell'];if(other)cls.push('other');if(we)cls.push('we');if(dISO===tISO)cls.push('today');
+    const hn=holidayName(dISO);
+    const cls=['cell'];if(other)cls.push('other');if(we)cls.push('we');if(hn)cls.push('hol');if(dISO===tISO)cls.push('today');
     const dayE=entriesForDay(dISO);
     // Urlaube zuerst (als Balken), dann Termine
     const urlaube=dayE.filter(e=>e.type==='urlaub');
@@ -526,7 +547,7 @@ function renderMonth(){
     const extra=dayE.length-shown;
     if(extra>0)chips+=`<div class="more">+${extra} mehr</div>`;
     const dd=d.getDate();
-    html+=`<div class="${cls.join(' ')}" onclick="dayClick('${dISO}')" title="${fmtD(dISO)} – antippen"><span class="dnum">${dd}</span>${chips}</div>`;
+    html+=`<div class="${cls.join(' ')}" onclick="dayClick('${dISO}')" title="${fmtD(dISO)} – antippen"><span class="dnum">${dd}</span>${hn?`<div class="hol-name" title="${hn}">${hn}</div>`:''}${chips}</div>`;
   }
   html+='</div></div>';
   document.getElementById('viewMonat').innerHTML=html;
@@ -542,8 +563,9 @@ function entryLine(e){
 }
 async function dayClick(dISO){
   const list=entriesForDay(dISO).sort((a,b)=>(a.type===b.type?0:a.type==='urlaub'?-1:1)||String(a.time||'').localeCompare(String(b.time||'')));
-  if(!list.length){openAdd(dISO,'urlaub');return;}
-  const html=`<div class="dlist">${list.map(entryLine).join('')}</div>`;
+  const hn=holidayName(dISO);
+  if(!list.length&&!hn){openAdd(dISO,'urlaub');return;}
+  const html=`<div class="dlist">${hn?`<div class="dhol">🎉 Feiertag: ${hn}</div>`:''}${list.map(entryLine).join('')}</div>`;
   document.getElementById('dFoot').classList.add('wrap');
   const v=await dlg(fmtLong(dISO),html,[{label:'🏖 Urlaub eintragen',cls:'btn-save',val:'urlaub'},{label:'📅 Termin eintragen',cls:'btn-save',val:'termin'}]);
   document.getElementById('dFoot').classList.remove('wrap');
@@ -572,7 +594,8 @@ function renderYearList(y){
     const list=entries.filter(e=>{const s=e.start||e.date,en=e.end||s;return s<=me_&&en>=ms;})
       .sort((a,b)=>String(a.start||a.date).localeCompare(String(b.start||b.date)));
     const body=list.length?list.map(entryLine).join(''):'<div class="dempty">Noch nichts eingetragen</div>';
-    months+=`<div class="ymon"><h4>${MONTHS[m]}<button type="button" onclick="cursor=new Date(${y},${m},1);setView('monat')">Monat öffnen</button></h4>${body}</div>`;
+    const mh=[...holidays(y)].filter(([h])=>h.slice(5,7)===pad(m+1)).map(([h,n])=>`${Number(h.slice(8))}. ${n}`);
+    months+=`<div class="ymon"><h4>${MONTHS[m]}<button type="button" onclick="cursor=new Date(${y},${m},1);setView('monat')">Monat öffnen</button></h4>${mh.length?`<div class="mhol">🎉 ${mh.join(' · ')}</div>`:''}${body}</div>`;
   }
   document.getElementById('viewJahr').innerHTML=`<div class="ylist">${sum}${months}</div>`;
 }
@@ -612,6 +635,7 @@ function renderYear(){
       const left=pct(dayOfYear(dd)+0.5);
       bars+=`<div class="y-pt" style="left:${left}%;background:${p.color}" onclick="event.stopPropagation();openEntry('${e.id}')" title="${p.name}${e.title?' · '+esc(e.title):''} (${fmtD(dd)}${e.time?' '+e.time:''})"></div>`;
     });
+    holidays(y).forEach((n,h)=>{bars+=`<div class="y-hol" style="left:${pct(dayOfYear(h))}%;width:${pct(1)}%"></div>`;});
     if(showToday)bars+=`<div class="y-today" style="left:${pct(dayOfYear(tISO))}%"></div>`;
     rows+=`<div class="y-row"><div class="y-name"><span class="dot" style="background:${p.color}"></span>${p.name}<small title="Urlaubstage ${y} (Mo–Fr ohne Feiertage)">${yearDays(p.name,y)} T</small></div><div style="position:relative"><div class="y-track" onclick="trackClick(event,${y},'${p.name}')" title="Klicken für neuen Urlaub">${bars}</div></div></div>`;
   });
@@ -680,9 +704,21 @@ function updateInfo(){
     const names=r.others.map(x=>`${esc(x.person)} (${fmtShort(x.start)}–${fmtShort(x.end)})`);
     parts.push(`Gleichzeitig im Urlaub: ${names.join(', ')}`);
   }
+  if(modalType==='urlaub'){
+    let s=document.getElementById('inStart').value,e=document.getElementById('inEnd').value||s;
+    if(s){ if(e<s){const t=s;s=e;e=t;}
+      const n=workdays(s,e);
+      const hs=[];for(let d=parse(s),end=parse(e);d<=end;d=addDays(d,1)){const hn=holidayName(iso(d));if(hn&&d.getDay()!==0&&d.getDay()!==6)hs.push(hn);}
+      parts.unshift(`Das sind ${tageTxt(n)} Urlaub${hs.length?` (ohne Feiertag: ${hs.join(', ')})`:''}.`);
+    }
+  }else{
+    const d=document.getElementById('inDate').value, hn=d?holidayName(d):'';
+    if(hn)parts.unshift(`Achtung: ${hn} ist Feiertag.`);
+  }
   box.innerHTML=parts.join('<br>');
   box.classList.toggle('hidden',!parts.length);
   box.classList.toggle('warn',r.own.length>0);
+  box.classList.toggle('calm',!r.own.length&&!r.others.length);
 }
 ['inStart','inEnd','inDate','mOwner'].forEach(id=>document.getElementById(id).addEventListener('change',updateInfo));
 ['inStart','inEnd','inDate'].forEach(id=>document.getElementById(id).addEventListener('input',updateInfo));
