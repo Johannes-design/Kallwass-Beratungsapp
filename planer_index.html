@@ -159,6 +159,63 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .dbody .who2 .dot{width:14px;height:14px;border-radius:50%}
 #dFoot .btn-save,#dFoot .btn-del,#dFoot .btn-cancel{flex:1}
 
+/* Tagesübersicht */
+.dlist{display:flex;flex-direction:column;gap:.45rem;margin-top:.2rem}
+.ditem{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);cursor:pointer;font-size:.9rem;text-align:left;width:100%;font-family:inherit;color:var(--text)}
+.ditem:hover{border-color:var(--gold)}
+.ditem .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.ditem b{font-weight:800}
+.ditem small{display:block;color:var(--text-muted);font-weight:600;font-size:.8rem}
+.dempty{color:var(--text-muted);font-size:.88rem}
+#dFoot.wrap{flex-wrap:wrap}
+
+/* Hinweis im Eintragsfenster */
+.info{background:#FFF7E0;color:#6b4e0c;border:1px solid #ecd9a3;border-radius:var(--radius-sm);padding:.5rem .7rem;font-size:.85rem;font-weight:700;margin-top:.2rem;margin-bottom:.4rem}
+.info.warn{background:#fdecea;color:#a3261b;border-color:#f3c4bf}
+
+/* Werkzeuge unter der Legende */
+.tools{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem;justify-content:center}
+.tool-btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--weinrot);font-weight:800;padding:.55rem 1rem;border-radius:999px;font-size:.85rem;box-shadow:var(--shadow-sm)}
+.tool-btn:hover{background:var(--weinrot);color:#fff;border-color:var(--weinrot)}
+
+/* Rückgängig-Leiste */
+.toast{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(150%);background:var(--text);color:#fff;border-radius:999px;padding:.55rem .6rem .55rem 1.1rem;display:flex;align-items:center;gap:.9rem;font-size:.88rem;font-weight:700;box-shadow:var(--shadow-lg);z-index:120;transition:transform .25s ease;max-width:calc(100% - 2rem)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast button{border:none;background:var(--gold);color:#fff;font-weight:800;padding:.45rem .9rem;border-radius:999px;font-size:.85rem}
+
+/* Jahresansicht: Tage und Handy-Liste */
+.y-name small{margin-left:auto;font-size:.72rem;font-weight:800;color:var(--text-muted);white-space:nowrap}
+.y-track{cursor:copy}
+.ylist{display:flex;flex-direction:column;gap:.8rem}
+.ysum{display:flex;flex-wrap:wrap;gap:.4rem;padding:.8rem;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.ysum .lg small{color:var(--text-muted);font-weight:800}
+.ymon{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.ymon h4{background:var(--surface-2);border-bottom:1px solid var(--line);padding:.5rem .8rem;font-size:.85rem;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.ymon h4 button{border:1px solid var(--gold);background:#fff;color:var(--gold);font-weight:800;border-radius:999px;padding:.2rem .7rem;font-size:.78rem}
+.ymon .ditem{border:none;border-bottom:1px solid var(--line);border-radius:0;background:var(--surface)}
+.ymon .ditem:last-child{border-bottom:none}
+.ymon .dempty{padding:.6rem .8rem}
+
+/* Druckansicht */
+#printArea{display:none}
+@media print{
+  @page{size:A4;margin:14mm}
+  body{background:#fff}
+  header,.toolbar,main,.ov,.conn,.toast{display:none!important}
+  #printArea{display:block;color:#000;font-size:10.5pt}
+  #printArea h1{font-size:17pt;margin-bottom:2pt}
+  #printArea .sub{font-size:9.5pt;color:#444;margin-bottom:10pt}
+  #printArea table{width:100%;border-collapse:collapse}
+  #printArea th,#printArea td{border:1px solid #777;padding:4pt 6pt;text-align:left;vertical-align:top}
+  #printArea th{background:#eee}
+  #printArea td.z{text-align:right;font-variant-numeric:tabular-nums}
+  #printArea tr.sum td{font-weight:800;background:#f4f4f4}
+  #printArea tr{break-inside:avoid}
+  #printArea .hint{font-size:8.5pt;color:#444;margin-top:6pt}
+  #printArea .sign{display:flex;gap:30pt;margin-top:34pt}
+  #printArea .sign div{flex:1;border-top:1px solid #000;padding-top:3pt;font-size:9pt}
+}
+
 /* status / empty */
 .conn{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--weinrot-dark);color:#fff;padding:.5rem 1rem;border-radius:999px;font-size:.78rem;font-weight:700;box-shadow:var(--shadow-lg);z-index:40;display:none}
 .conn.show{display:block}
@@ -217,8 +274,14 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
   <div id="viewMonat"></div>
   <div id="viewJahr" class="hidden"></div>
   <div class="legend" id="legend"></div>
+  <div class="tools">
+    <button class="tool-btn" onclick="printView()">🖨 Urlaubsliste drucken</button>
+    <button class="tool-btn" onclick="downloadBackup()">💾 Sicherung herunterladen</button>
+  </div>
   <div class="note" id="note"></div>
 </main>
+<div id="printArea"></div>
+<div class="toast" id="toast" role="status"><span id="toastTxt"></span><button id="toastBtn" type="button">Rückgängig</button></div>
 
 <!-- Modal -->
 <div class="ov" id="ov">
@@ -244,6 +307,7 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
         <div class="fld"><label>Was ist der Termin? *</label><input type="text" id="inTitle" maxlength="80" placeholder="z. B. Beisetzung Müller, Zentralfriedhof"></div>
         <div class="fld"><label>Details (optional)</label><textarea id="inNote" rows="3" maxlength="500" placeholder="z. B. Treffpunkt, Ansprechpartner, Mitbringen…"></textarea></div>
       </div>
+      <div class="info hidden" id="mInfo"></div>
       <div class="ferr hidden" id="mErr"></div>
     </div>
     <div class="modal-foot">
@@ -325,6 +389,34 @@ const parse=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
 const todayISO=()=>iso(new Date());
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function daysInMonth(y,m){return new Date(y,m+1,0).getDate();}
+const fmtShort=s=>{if(!s)return'';const[,m,d]=s.split('-');return `${d}.${m}.`;};
+const WD_LONG=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const fmtLong=s=>{const d=parse(s);return `${WD_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;};
+
+/* ===== Arbeitstage: Mo–Fr ohne Feiertage in Mecklenburg-Vorpommern ===== */
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);}
+const holCache={};
+function holidays(y){
+  if(holCache[y])return holCache[y];
+  const o=easter(y);
+  const list=[new Date(y,0,1),new Date(y,2,8),addDays(o,-2),addDays(o,1),new Date(y,4,1),addDays(o,39),addDays(o,50),new Date(y,9,3),new Date(y,9,31),new Date(y,11,25),new Date(y,11,26)];
+  return holCache[y]=new Set(list.map(iso));
+}
+function workdays(s,e){
+  let n=0;
+  for(let d=parse(s),end=parse(e);d<=end;d=addDays(d,1)){
+    const w=d.getDay();if(w===0||w===6)continue;
+    if(holidays(d.getFullYear()).has(iso(d)))continue;
+    n++;
+  }
+  return n;
+}
+/* Arbeitstage eines Urlaubs, die in ein bestimmtes Jahr fallen */
+function workdaysInYear(e,y){
+  const s=e.start<`${y}-01-01`?`${y}-01-01`:e.start, en=e.end>`${y}-12-31`?`${y}-12-31`:e.end;
+  return s>en?0:workdays(s,en);
+}
+const tageTxt=n=>n===1?'1 Tag':`${n} Tage`;
 
 /* ===== Firebase init (robust; App rendert auch ohne Verbindung) ===== */
 function startFirebase(){
@@ -434,16 +526,60 @@ function renderMonth(){
     const extra=dayE.length-shown;
     if(extra>0)chips+=`<div class="more">+${extra} mehr</div>`;
     const dd=d.getDate();
-    html+=`<div class="${cls.join(' ')}" onclick="openAdd('${dISO}')" title="${fmtD(dISO)} – antippen für neuen Eintrag"><span class="dnum">${dd}</span>${chips}</div>`;
+    html+=`<div class="${cls.join(' ')}" onclick="dayClick('${dISO}')" title="${fmtD(dISO)} – antippen"><span class="dnum">${dd}</span>${chips}</div>`;
   }
   html+='</div></div>';
   document.getElementById('viewMonat').innerHTML=html;
 }
 
+/* ===== Tagesübersicht: Tipp auf einen Tag ===== */
+function entryLine(e){
+  const bg=colorOf(e.person);
+  const what=e.type==='urlaub'
+    ? `Urlaub ${fmtD(e.start)}${e.end!==e.start?' – '+fmtD(e.end):''}`
+    : `${e.time?esc(e.time)+' Uhr · ':''}${esc(e.title||'Termin')}`;
+  return `<button type="button" class="ditem" onclick="dlgClose(false);openEntry('${e.id}')"><span class="dot" style="background:${bg}"></span><span><b>${esc(e.person)}</b><small>${what}</small></span></button>`;
+}
+async function dayClick(dISO){
+  const list=entriesForDay(dISO).sort((a,b)=>(a.type===b.type?0:a.type==='urlaub'?-1:1)||String(a.time||'').localeCompare(String(b.time||'')));
+  if(!list.length){openAdd(dISO,'urlaub');return;}
+  const html=`<div class="dlist">${list.map(entryLine).join('')}</div>`;
+  document.getElementById('dFoot').classList.add('wrap');
+  const v=await dlg(fmtLong(dISO),html,[{label:'🏖 Urlaub eintragen',cls:'btn-save',val:'urlaub'},{label:'📅 Termin eintragen',cls:'btn-save',val:'termin'}]);
+  document.getElementById('dFoot').classList.remove('wrap');
+  if(v==='urlaub'||v==='termin')openAdd(dISO,v);
+}
+
 /* ===== Year view (Gantt-style timeline) ===== */
+const isNarrow=()=>window.matchMedia('(max-width:680px)').matches;
+function yearDays(name,y){
+  return entries.filter(e=>e.person===name&&e.type==='urlaub').reduce((a,e)=>a+workdaysInYear(e,y),0);
+}
+/* Klick auf eine freie Stelle in der Zeitleiste -> neuer Urlaub an diesem Tag */
+function trackClick(ev,y,name){
+  const r=ev.currentTarget.getBoundingClientRect();
+  const total=(new Date(y+1,0,1)-new Date(y,0,1))/86400000;
+  const n=Math.min(total-1,Math.max(0,Math.floor((ev.clientX-r.left)/r.width*total)));
+  openAdd(iso(addDays(new Date(y,0,1),n)),'urlaub');
+  if(!document.getElementById('mOwner').value)setOwner(name,false);
+}
+/* Jahresansicht am Handy: Liste nach Monaten */
+function renderYearList(y){
+  let sum='<div class="ysum">'+PERSONS.map(p=>`<span class="lg"><span class="dot" style="background:${p.color}"></span>${p.name} <small>${yearDays(p.name,y)} T</small></span>`).join('')+'</div>';
+  let months='';
+  for(let m=0;m<12;m++){
+    const ms=`${y}-${pad(m+1)}-01`, me_=`${y}-${pad(m+1)}-${pad(daysInMonth(y,m))}`;
+    const list=entries.filter(e=>{const s=e.start||e.date,en=e.end||s;return s<=me_&&en>=ms;})
+      .sort((a,b)=>String(a.start||a.date).localeCompare(String(b.start||b.date)));
+    const body=list.length?list.map(entryLine).join(''):'<div class="dempty">Noch nichts eingetragen</div>';
+    months+=`<div class="ymon"><h4>${MONTHS[m]}<button type="button" onclick="cursor=new Date(${y},${m},1);setView('monat')">Monat öffnen</button></h4>${body}</div>`;
+  }
+  document.getElementById('viewJahr').innerHTML=`<div class="ylist">${sum}${months}</div>`;
+}
 function renderYear(){
   const y=cursor.getFullYear();
   document.getElementById('period').textContent=`${y}`;
+  if(isNarrow()){renderYearList(y);return;}
   const dim=[];for(let m=0;m<12;m++)dim.push(daysInMonth(y,m));
   const total=dim.reduce((a,b)=>a+b,0);
   // month header grid
@@ -469,15 +605,15 @@ function renderYear(){
       const s0=Math.max(0,dayOfYear(s<`${y}-01-01`?`${y}-01-01`:s));
       const e0=Math.min(total-1,dayOfYear(en>`${y}-12-31`?`${y}-12-31`:en));
       const left=pct(s0), w=Math.max(pct(e0-s0+1),0.4);
-      bars+=`<div class="y-bar" style="left:${left}%;width:${w}%;background:${p.color}" onclick="openEntry('${e.id}')" title="${p.name} · Urlaub ${fmtD(e.start)}–${fmtD(e.end)}"></div>`;
+      bars+=`<div class="y-bar" style="left:${left}%;width:${w}%;background:${p.color}" onclick="event.stopPropagation();openEntry('${e.id}')" title="${p.name} · Urlaub ${fmtD(e.start)}–${fmtD(e.end)}"></div>`;
     });
     mine.filter(e=>e.type==='termin').forEach(e=>{
       const dd=e.date||e.start;if(dd< `${y}-01-01`||dd>`${y}-12-31`)return;
       const left=pct(dayOfYear(dd)+0.5);
-      bars+=`<div class="y-pt" style="left:${left}%;background:${p.color}" onclick="openEntry('${e.id}')" title="${p.name}${e.title?' · '+esc(e.title):''} (${fmtD(dd)}${e.time?' '+e.time:''})"></div>`;
+      bars+=`<div class="y-pt" style="left:${left}%;background:${p.color}" onclick="event.stopPropagation();openEntry('${e.id}')" title="${p.name}${e.title?' · '+esc(e.title):''} (${fmtD(dd)}${e.time?' '+e.time:''})"></div>`;
     });
     if(showToday)bars+=`<div class="y-today" style="left:${pct(dayOfYear(tISO))}%"></div>`;
-    rows+=`<div class="y-row"><div class="y-name"><span class="dot" style="background:${p.color}"></span>${p.name}</div><div style="position:relative"><div class="y-track">${bars}</div></div></div>`;
+    rows+=`<div class="y-row"><div class="y-name"><span class="dot" style="background:${p.color}"></span>${p.name}<small title="Urlaubstage ${y} (Mo–Fr ohne Feiertage)">${yearDays(p.name,y)} T</small></div><div style="position:relative"><div class="y-track" onclick="trackClick(event,${y},'${p.name}')" title="Klicken für neuen Urlaub">${bars}</div></div></div>`;
   });
   document.getElementById('viewJahr').innerHTML=`<div class="year"><div class="year-scroll"><div class="year-grid">${head}${rows}</div></div></div>`;
 }
@@ -491,8 +627,9 @@ function renderLegend(){
 
 /* ===== Modal ===== */
 function requireMe(){if(!me){showMsg('Name wählen','Bitte oben rechts bei <b>„Ich bin"</b> zuerst deinen Namen auswählen.').then(()=>document.getElementById('whoSel').focus());return false;}return true;}
-function openAdd(prefillISO){
-  editId=null;modalType='urlaub';
+function openAdd(prefillISO,type){
+  if(typeof prefillISO!=='string')prefillISO=null;
+  editId=null;modalType=type==='termin'?'termin':'urlaub';
   document.getElementById('mTitle').textContent='Neuer Eintrag';
   document.getElementById('btnDel').classList.add('hidden');
   const t=prefillISO||todayISO();
@@ -502,8 +639,53 @@ function openAdd(prefillISO){
   document.getElementById('inTime').value='';
   document.getElementById('inTitle').value='';
   document.getElementById('inNote').value='';
-  clearErr();setType('urlaub');setOwner(me,false);openOv();
+  clearErr();setType(modalType);setOwner(me,false);openOv();
 }
+
+/* ===== Hinweis auf Überschneidungen im Eintragsfenster ===== */
+function overlapInfo(){
+  const person=document.getElementById('mOwner').value;
+  const res={others:[],own:[]};
+  if(modalType==='urlaub'){
+    let s=document.getElementById('inStart').value,e=document.getElementById('inEnd').value||s;
+    if(!s)return res; if(e<s){const t=s;s=e;e=t;}
+    entries.forEach(x=>{
+      if(x.id===editId)return;
+      const xs=x.start||x.date, xe=x.end||xs;
+      if(!(xs<=e&&s<=xe))return;
+      if(x.person===person&&x.type==='termin')res.own.push(x);
+      else if(x.person!==person&&x.type==='urlaub')res.others.push(x);
+    });
+  }else{
+    const d=document.getElementById('inDate').value;
+    if(!d)return res;
+    entries.forEach(x=>{
+      if(x.id===editId||x.type!=='urlaub')return;
+      if(!(x.start<=d&&d<=x.end))return;
+      if(x.person===person)res.own.push(x);else res.others.push(x);
+    });
+  }
+  return res;
+}
+function updateInfo(){
+  const box=document.getElementById('mInfo');
+  const r=overlapInfo();
+  const parts=[];
+  if(r.own.length){
+    parts.push(modalType==='urlaub'
+      ? `Du hast in der Zeit einen Termin: ${r.own.map(x=>`${fmtD(x.date||x.start)} ${esc(x.title||'')}`).join(', ')}`
+      : `Du hast an dem Tag Urlaub (${r.own.map(x=>`${fmtShort(x.start)}–${fmtD(x.end)}`).join(', ')}).`);
+  }
+  if(r.others.length){
+    const names=r.others.map(x=>`${esc(x.person)} (${fmtShort(x.start)}–${fmtShort(x.end)})`);
+    parts.push(`Gleichzeitig im Urlaub: ${names.join(', ')}`);
+  }
+  box.innerHTML=parts.join('<br>');
+  box.classList.toggle('hidden',!parts.length);
+  box.classList.toggle('warn',r.own.length>0);
+}
+['inStart','inEnd','inDate','mOwner'].forEach(id=>document.getElementById(id).addEventListener('change',updateInfo));
+['inStart','inEnd','inDate'].forEach(id=>document.getElementById(id).addEventListener('input',updateInfo));
 function openEntry(id){
   const e=entries.find(x=>x.id===id);if(!e)return;
   if(e.person!==me){
@@ -530,12 +712,14 @@ function setOwner(name,locked){
   const ms=document.getElementById('mOwner');
   ms.value=name||'';ms.disabled=!!locked;
   document.getElementById('mDot').style.background=name?colorOf(name):'transparent';
+  updateInfo();
 }
 function setType(t){modalType=t;
   document.getElementById('tUrlaub').classList.toggle('active',t==='urlaub');
   document.getElementById('tTermin').classList.toggle('active',t==='termin');
   document.getElementById('fUrlaub').classList.toggle('hidden',t!=='urlaub');
   document.getElementById('fTermin').classList.toggle('hidden',t!=='termin');
+  updateInfo();
 }
 function openOv(){document.getElementById('ov').classList.add('show');}
 function closeModal(){document.getElementById('ov').classList.remove('show');}
@@ -557,6 +741,12 @@ async function saveEntry(){
     data={type:'termin',person,date:d,start:d,end:d,time:document.getElementById('inTime').value||'',title,note:document.getElementById('inNote').value.trim()};
   }
   clearErr();
+  const conflict=overlapInfo().own;
+  if(conflict.length){
+    const msg=modalType==='urlaub'?'Du hast in der Zeit schon einen Termin.':'Du hast an dem Tag Urlaub.';
+    const ok=await dlg('Trotzdem speichern?',`${msg} Trotzdem speichern?`,[{label:'Abbrechen',cls:'btn-cancel',val:false},{label:'Speichern',cls:'btn-save',val:true}]);
+    if(!ok)return;
+  }
   if(person!==me)setMe(person); // gewählten Namen fürs nächste Mal merken
   if(!db){ // Offline-Vorschau
     if(editId){const idx=entries.findIndex(x=>x.id===editId);if(idx>-1)entries[idx]={...entries[idx],...data};}
@@ -574,9 +764,65 @@ async function delEntry(){
   const id=editId;
   const ok=await askConfirm('Eintrag löschen?','Diesen Eintrag wirklich löschen?','Löschen');
   if(!ok)return;
-  if(!db){entries=entries.filter(x=>x.id!==id);closeModal();renderAll();return;}
-  try{await db.collection(COLL).doc(id).delete();closeModal();}
+  const old=entries.find(x=>x.id===id);
+  const copy=old?Object.fromEntries(Object.entries(old).filter(([k])=>k!=='id')):null;
+  if(!db){entries=entries.filter(x=>x.id!==id);closeModal();renderAll();offerUndo(id,copy);return;}
+  try{await db.collection(COLL).doc(id).delete();closeModal();offerUndo(id,copy);}
   catch(err){showErr('Löschen fehlgeschlagen: '+err.message);}
+}
+
+/* ===== Rückgängig nach dem Löschen ===== */
+let toastTimer=null;
+function hideToast(){document.getElementById('toast').classList.remove('show');clearTimeout(toastTimer);}
+function offerUndo(id,copy){
+  if(!copy)return;
+  document.getElementById('toastTxt').textContent='Eintrag gelöscht';
+  const btn=document.getElementById('toastBtn');
+  btn.classList.remove('hidden');
+  btn.onclick=async()=>{
+    hideToast();
+    if(!db){entries.push({id,...copy});renderAll();return;}
+    try{await db.collection(COLL).doc(id).set(copy);}
+    catch(err){showMsg('Fehler','Wiederherstellen fehlgeschlagen: '+esc(err.message));}
+  };
+  document.getElementById('toast').classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,10000);
+}
+
+/* ===== Sicherung herunterladen ===== */
+function downloadBackup(){
+  const data=entries.map(e=>{const o={...e};if(o.createdAt&&o.createdAt.toDate)o.createdAt=o.createdAt.toDate().toISOString();return o;})
+    .sort((a,b)=>String(a.start).localeCompare(String(b.start)));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=`planer-sicherung-${todayISO()}.json`;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
+/* ===== Druckansicht: Urlaubsliste für den Chef ===== */
+function printView(){
+  const y=cursor.getFullYear();
+  const list=entries.filter(e=>e.type==='urlaub'&&e.start<=`${y}-12-31`&&e.end>=`${y}-01-01`);
+  let rows='';
+  PERSONS.forEach(p=>{
+    const mine=list.filter(e=>e.person===p.name).sort((a,b)=>a.start.localeCompare(b.start));
+    if(!mine.length)return;
+    let sum=0;
+    mine.forEach((e,i)=>{
+      const n=workdaysInYear(e,y);sum+=n;
+      rows+=`<tr><td>${i===0?esc(p.name):''}</td><td>${fmtD(e.start)}</td><td>${fmtD(e.end)}</td><td class="z">${n}</td></tr>`;
+    });
+    rows+=`<tr class="sum"><td></td><td colspan="2">Summe ${esc(p.name)}</td><td class="z">${sum}</td></tr>`;
+  });
+  if(!rows)rows='<tr><td colspan="4">Noch kein Urlaub eingetragen.</td></tr>';
+  const now=new Date();
+  document.getElementById('printArea').innerHTML=
+    `<h1>Urlaubsplanung ${y}</h1><div class="sub">Bestattungshaus Kallwaß · Stand ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}</div>`+
+    `<table><thead><tr><th>Name</th><th>Von</th><th>Bis</th><th>Arbeitstage</th></tr></thead><tbody>${rows}</tbody></table>`+
+    `<div class="hint">Arbeitstage = Montag bis Freitag ohne gesetzliche Feiertage in Mecklenburg-Vorpommern. Gezählt werden nur Tage im Jahr ${y}.</div>`+
+    `<div class="sign"><div>Datum</div><div>Unterschrift Geschäftsführung</div></div>`;
+  window.print();
 }
 document.getElementById('ov').addEventListener('click',e=>{if(e.target.id==='ov')closeModal();});
 document.getElementById('dlg').addEventListener('click',e=>{if(e.target.id==='dlg')dlgClose(false);});
@@ -588,6 +834,7 @@ window.__planer={setEntries:a=>{entries=a;renderAll();},setMe:n=>{me=n;document.
 /* ===== Boot ===== */
 window.addEventListener('DOMContentLoaded',()=>{
   initWho();renderAll();startFirebase();
+  window.matchMedia('(max-width:680px)').addEventListener('change',()=>{if(view==='jahr')renderAll();});
 });
 </script>
 </body>
