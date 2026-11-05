@@ -213,24 +213,36 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
 .ymon .ditem:last-child{border-bottom:none}
 .ymon .dempty{padding:.6rem .8rem}
 
-/* Druckansicht */
-#printArea{display:none}
+/* Druckansicht (sichtbar als Vorschau, gedruckt wird nur das Blatt) */
+.pv{position:fixed;inset:0;z-index:150;background:rgba(42,32,36,.55);display:none;flex-direction:column;align-items:center;overflow:auto;padding:0 0 2rem}
+.pv.open{display:flex}
+.pv-bar{position:sticky;top:0;width:100%;background:var(--weinrot);color:#fff;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:center;padding:calc(.6rem + env(safe-area-inset-top,0px)) 1rem .6rem;box-shadow:var(--shadow);z-index:2}
+.pv-bar .lbl{font-weight:800;font-size:.85rem;color:var(--gold-light)}
+.pv-bar button{border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-weight:800;padding:.45rem .9rem;border-radius:999px;font-size:.88rem}
+.pv-bar button.on{background:#fff;color:var(--weinrot);border-color:#fff}
+.pv-bar button.go{background:var(--gold);border-color:var(--gold)}
+.pv-hint{width:100%;text-align:center;font-size:.75rem;color:rgba(255,255,255,.8);font-weight:600}
+.pv-page{background:#fff;color:#000;width:min(210mm,calc(100% - 2rem));margin-top:1rem;padding:14mm;box-shadow:var(--shadow-lg);border-radius:4px}
+#printArea{font-size:10.5pt;color:#000}
+#printArea h1{font-size:17pt;margin-bottom:2pt}
+#printArea .sub{font-size:9.5pt;color:#444;margin-bottom:10pt}
+#printArea .tbl{overflow-x:auto}
+#printArea table{width:100%;border-collapse:collapse}
+#printArea th,#printArea td{border:1px solid #777;padding:4pt 6pt;text-align:left;vertical-align:top}
+#printArea th{background:#eee}
+#printArea td.z{text-align:right;font-variant-numeric:tabular-nums}
+#printArea tr.sum td{font-weight:800;background:#f4f4f4}
+#printArea tr{break-inside:avoid}
+#printArea .hint{font-size:8.5pt;color:#444;margin-top:6pt}
+#printArea .sign{display:flex;gap:30pt;margin-top:34pt}
+#printArea .sign div{flex:1;border-top:1px solid #000;padding-top:3pt;font-size:9pt}
+@media(max-width:680px){.pv-page{padding:1rem;width:calc(100% - 1rem)}#printArea{font-size:9.5pt}#printArea th,#printArea td{padding:3pt 4pt}}
 @media print{
   @page{size:A4;margin:14mm}
   body{background:#fff}
-  header,.toolbar,main,.ov,.conn,.toast{display:none!important}
-  #printArea{display:block;color:#000;font-size:10.5pt}
-  #printArea h1{font-size:17pt;margin-bottom:2pt}
-  #printArea .sub{font-size:9.5pt;color:#444;margin-bottom:10pt}
-  #printArea table{width:100%;border-collapse:collapse}
-  #printArea th,#printArea td{border:1px solid #777;padding:4pt 6pt;text-align:left;vertical-align:top}
-  #printArea th{background:#eee}
-  #printArea td.z{text-align:right;font-variant-numeric:tabular-nums}
-  #printArea tr.sum td{font-weight:800;background:#f4f4f4}
-  #printArea tr{break-inside:avoid}
-  #printArea .hint{font-size:8.5pt;color:#444;margin-top:6pt}
-  #printArea .sign{display:flex;gap:30pt;margin-top:34pt}
-  #printArea .sign div{flex:1;border-top:1px solid #000;padding-top:3pt;font-size:9pt}
+  header,.toolbar,main,.ov,.conn,.toast,.pv-bar{display:none!important}
+  .pv{display:block!important;position:static;background:none;padding:0;overflow:visible}
+  .pv-page{width:auto;margin:0;padding:0;box-shadow:none}
 }
 
 /* status / empty */
@@ -297,7 +309,15 @@ main{max-width:1280px;margin:0 auto;padding:0 1rem 2rem}
   </div>
   <div class="note" id="note"></div>
 </main>
-<div id="printArea"></div>
+<div class="pv" id="pv">
+  <div class="pv-bar">
+    <span class="lbl">Jahr:</span><span id="pvYears" style="display:contents"></span>
+    <button type="button" class="go" onclick="doPrint()">🖨 Drucken</button>
+    <button type="button" onclick="closePrint()">Schließen</button>
+    <div class="pv-hint">Klappt Drucken am Handy nicht: im Browser auf „Teilen“ → „Drucken“ tippen.</div>
+  </div>
+  <div class="pv-page"><div id="printArea"></div></div>
+</div>
 <div class="toast" id="toast" role="status"><span id="toastTxt"></span><button id="toastBtn" type="button">Rückgängig</button></div>
 
 <!-- Modal -->
@@ -885,8 +905,26 @@ function downloadBackup(){
 }
 
 /* ===== Druckansicht: Urlaubsliste für den Chef ===== */
-function printView(){
-  const y=cursor.getFullYear();
+let printYear=null;
+function printYears(){
+  const ys=new Set();
+  entries.forEach(e=>{if(e.type==='urlaub'){ys.add(Number(e.start.slice(0,4)));ys.add(Number(e.end.slice(0,4)));}});
+  ys.add(new Date().getFullYear());ys.add(new Date().getFullYear()+1);
+  return [...ys].sort();
+}
+/* Standard: das Jahr ab heute mit den meisten Urlauben */
+function defaultPrintYear(){
+  const now=new Date().getFullYear();
+  let best=now,max=-1;
+  printYears().filter(y=>y>=now).forEach(y=>{
+    const n=entries.filter(e=>e.type==='urlaub'&&e.start<=`${y}-12-31`&&e.end>=`${y}-01-01`).length;
+    if(n>max){max=n;best=y;}
+  });
+  return best;
+}
+function renderPrint(y){
+  printYear=y;
+  document.getElementById('pvYears').innerHTML=printYears().map(v=>`<button type="button" class="${v===y?'on':''}" onclick="renderPrint(${v})">${v}</button>`).join('');
   const list=entries.filter(e=>e.type==='urlaub'&&e.start<=`${y}-12-31`&&e.end>=`${y}-01-01`);
   let rows='';
   PERSONS.forEach(p=>{
@@ -899,18 +937,26 @@ function printView(){
     });
     rows+=`<tr class="sum"><td></td><td colspan="2">Summe ${esc(p.name)}</td><td class="z">${sum}</td></tr>`;
   });
-  if(!rows)rows='<tr><td colspan="4">Noch kein Urlaub eingetragen.</td></tr>';
+  if(!rows)rows=`<tr><td colspan="4">Für ${y} ist noch kein Urlaub eingetragen.</td></tr>`;
   const now=new Date();
   document.getElementById('printArea').innerHTML=
     `<h1>Urlaubsplanung ${y}</h1><div class="sub">Bestattungshaus Kallwaß · Stand ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}</div>`+
-    `<table><thead><tr><th>Name</th><th>Von</th><th>Bis</th><th>Arbeitstage</th></tr></thead><tbody>${rows}</tbody></table>`+
+    `<div class="tbl"><table><thead><tr><th>Name</th><th>Von</th><th>Bis</th><th>Arbeitstage</th></tr></thead><tbody>${rows}</tbody></table></div>`+
     `<div class="hint">Arbeitstage = Montag bis Freitag ohne gesetzliche Feiertage in Mecklenburg-Vorpommern. Gezählt werden nur Tage im Jahr ${y}.</div>`+
     `<div class="sign"><div>Datum</div><div>Unterschrift Geschäftsführung</div></div>`;
-  window.print();
 }
+function printView(){
+  renderPrint(view==='jahr'?cursor.getFullYear():defaultPrintYear());
+  document.getElementById('pv').classList.add('open');
+  document.getElementById('pv').scrollTop=0;
+}
+function closePrint(){document.getElementById('pv').classList.remove('open');}
+function doPrint(){try{window.print();}catch(e){showMsg('Drucken','Bitte im Browser über „Teilen“ → „Drucken“ drucken.');}}
+/* Auch Cmd+P / Strg+P druckt die Urlaubsliste */
+window.addEventListener('beforeprint',()=>{if(!document.getElementById('pv').classList.contains('open'))renderPrint(defaultPrintYear());});
 document.getElementById('ov').addEventListener('click',e=>{if(e.target.id==='ov')closeModal();});
 document.getElementById('dlg').addEventListener('click',e=>{if(e.target.id==='dlg')dlgClose(false);});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('dlg').classList.contains('show'))dlgClose(false);else closeModal();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('pv').classList.contains('open')){closePrint();return;}if(e.key==='Escape'){if(document.getElementById('dlg').classList.contains('show'))dlgClose(false);else closeModal();}});
 
 /* ===== Test-Hook (für Vorschau/Screenshots ohne Firestore) ===== */
 window.__planer={setEntries:a=>{entries=a;renderAll();},setMe:n=>{me=n;document.getElementById('whoSel').value=n;updateWhoDot();renderAll();},setCursor:d=>{cursor=d;renderAll();},setView:setView};
